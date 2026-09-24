@@ -1,48 +1,101 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleLogin = (event) => {
-    event.preventDefault();
-
-    alert(`Login attempted for ${email}`);
-  };
-
   return (
-    <div>
-      <h1>Welcome Back</h1>
+    <div className="auth-page">
 
-      <p>Login to continue tracking your carbon footprint.</p>
-
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>Email</label>
-          <br />
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+      {/* Left Side */}
+      <div className="auth-visual">
+        <div className="auth-logo">
+          Carbon<span>Wise</span>
         </div>
 
-        <br />
+        <div className="auth-visual-content">
+          <div className="leaf-icon">🌱</div>
 
-        <div>
-          <label>Password</label>
-          <br />
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <h1>Track. Reduce. Sustain.</h1>
+
+          <p>
+            Take control of your carbon footprint and make
+            every choice count for a greener future.
+          </p>
+
+          <div className="auth-stats">
+            <div>
+              <strong>🌍</strong>
+              <span>Track your impact</span>
+            </div>
+
+            <div>
+              <strong>♻</strong>
+              <span>Reduce emissions</span>
+            </div>
+
+            <div>
+              <strong>🌱</strong>
+              <span>Build a greener future</span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <br />
+      {/* Right Side */}
+      <div className="auth-form-section">
+        <div className="auth-form-card">
 
-        <button type="submit">Login</button>
-      </form>
+          <Link to="/" className="back-home">
+            ← Back to Home
+          </Link>
+
+          <h2>Welcome Back</h2>
+
+          <p className="auth-subtitle">
+            Login to continue tracking your carbon footprint.
+          </p>
+
+          <form>
+
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div className="form-group">
+              <div className="password-label">
+                <label>Password</label>
+                <a href="#forgot">Forgot Password?</a>
+              </div>
+
+              <input
+                type="password"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <div className="remember-row">
+              <label>
+                <input type="checkbox" />
+                Remember me
+              </label>
+            </div>
+
+            <button type="submit" className="auth-submit">
+              Login
+            </button>
+
+          </form>
+
+          <p className="auth-switch">
+            Don't have an account?
+            <Link to="/register"> Create Account</Link>
+          </p>
+
+        </div>
+      </div>
+
     </div>
   );
 }

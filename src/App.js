@@ -1,9 +1,31 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import AddCarbonEntry from "./pages/AddCarbonEntry";
+import CarbonResult from "./pages/CarbonResult";
+
 function App() {
   return (
-    <div>
-      <h1>CarbonWise</h1>
-      <p>Carbon Footprint Tracker</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+
+        <Route path="/" element={<Landing />} />
+
+        <Route path="/login" element={<Login />} />
+
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        <Route path="/add-entry" element={<AddCarbonEntry />} />
+
+        <Route path="/carbon-result" element={<CarbonResult />} />
+
+      </Routes>
+    </BrowserRouter>
   );
 }
 

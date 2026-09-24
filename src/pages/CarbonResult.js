@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 function CarbonResult() {
-  const [emissions, setEmissions] = useState(12.8);
+  const emissions = 12.8;
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {

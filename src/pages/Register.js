@@ -1,46 +1,157 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function Register() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-
-  const handleRegister = (event) => {
-    event.preventDefault();
-
-    alert(`Account created for ${name}`);
-  };
-
   return (
-    <div>
-      <h1>Create Your Account</h1>
+    <div className="auth-page">
 
-      <form onSubmit={handleRegister}>
-        <div>
-          <label>Full Name</label>
-          <br />
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
+      {/* Left Side */}
+      <div className="auth-visual">
+        <div className="auth-logo">
+          Carbon<span>Wise</span>
         </div>
 
-        <br />
+        <div className="auth-visual-content">
+          <div className="leaf-icon">🌱</div>
 
-        <div>
-          <label>Email</label>
-          <br />
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+          <h1>Start Your Green Journey.</h1>
+
+          <p>
+            Create your CarbonWise account and start
+            understanding, tracking, and reducing your
+            carbon footprint.
+          </p>
+
+          <div className="auth-stats">
+            <div>
+              <strong>📊</strong>
+              <span>Track your emissions</span>
+            </div>
+
+            <div>
+              <strong>🌍</strong>
+              <span>Understand your impact</span>
+            </div>
+
+            <div>
+              <strong>🌱</strong>
+              <span>Make greener choices</span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <br />
+      {/* Right Side */}
+      <div className="auth-form-section">
+        <div className="auth-form-card register-card">
 
-        <button type="submit">Create Account</button>
-      </form>
+          <Link to="/" className="back-home">
+            ← Back to Home
+          </Link>
+
+          <h2>Create Your Account</h2>
+
+          <p className="auth-subtitle">
+            Join CarbonWise and start tracking your carbon footprint.
+          </p>
+
+          <form>
+
+            {/* Full Name */}
+            <div className="form-group">
+              <label>Full Name</label>
+              <input
+                type="text"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                placeholder="Create a password"
+              />
+            </div>
+
+            {/* Confirm Password */}
+            <div className="form-group">
+              <label>Confirm Password</label>
+              <input
+                type="password"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            {/* City and Age */}
+            <div className="form-row">
+
+              <div className="form-group">
+                <label>City</label>
+                <input
+                  type="text"
+                  placeholder="Enter your city"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Age</label>
+                <input
+                  type="number"
+                  placeholder="Age"
+                  min="1"
+                />
+              </div>
+
+            </div>
+
+            {/* Country */}
+            <div className="form-group">
+              <label>
+                Country <span className="optional">(Optional)</span>
+              </label>
+
+              <input
+                type="text"
+                placeholder="Enter your country"
+              />
+            </div>
+
+            {/* Terms */}
+            <div className="terms-row">
+              <label>
+                <input type="checkbox" />
+                <span>
+                  I agree to the <a href="#terms">Terms of Service</a>{" "}
+                  and <a href="#privacy">Privacy Policy</a>.
+                </span>
+              </label>
+            </div>
+
+            {/* Submit */}
+            <button type="submit" className="auth-submit">
+              Create Account
+            </button>
+
+          </form>
+
+          <p className="auth-switch">
+            Already have an account?
+            <Link to="/login"> Login</Link>
+          </p>
+
+        </div>
+      </div>
+
     </div>
   );
 }
