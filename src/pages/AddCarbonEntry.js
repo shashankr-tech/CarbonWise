@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function AddCarbonEntry() {
   const [category, setCategory] = useState("Transportation");
+
   const [distance, setDistance] = useState("");
+
   const [vehicle, setVehicle] = useState("");
 
   const handleCategoryChange = (event) => {
@@ -11,123 +14,245 @@ function AddCarbonEntry() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-
     alert("Carbon entry calculated!");
   };
 
   return (
-    <div>
-      <h1>Add Carbon Entry</h1>
+    <div className="add-entry-page">
 
-      <p>Record an activity to calculate your carbon footprint.</p>
+      <div className="add-entry-container">
 
-      <form onSubmit={handleSubmit}>
+        {/* Back to Dashboard */}
+        <Link to="/dashboard" className="add-entry-back">
+          ← Back to Dashboard
+        </Link>
 
-        <div>
-          <label>Category</label>
-          <br />
-
-          <select value={category} onChange={handleCategoryChange}>
-            <option value="Transportation">Transportation</option>
-            <option value="Electricity">Electricity</option>
-            <option value="Household Fuel">Household Fuel</option>
-            <option value="Water">Water</option>
-          </select>
+        {/* Header */}
+        <div className="add-entry-header">
+          <h1>Add Carbon Entry</h1>
+          <p>
+            Record an activity to calculate your carbon footprint.
+          </p>
         </div>
 
-        <br />
+        {/* Form Card */}
+        <div className="add-entry-card">
 
-        {category === "Transportation" && (
-          <div>
-            <label>Transportation Mode</label>
-            <br />
+          <form onSubmit={handleSubmit}>
 
-            <select>
-              <option value="Personal Vehicle">Personal Vehicle</option>
-              <option value="Bus">Bus</option>
-              <option value="Train">Train</option>
-              <option value="Taxi">Taxi / Cab</option>
-              <option value="Flight">Flight</option>
-              <option value="Bicycle">Bicycle</option>
-              <option value="Walking">Walking</option>
-            </select>
+            {/* Category */}
+            <div className="add-entry-form-group">
+              <label>Category</label>
 
-            <br />
-            <br />
+              <select
+                value={category}
+                onChange={handleCategoryChange}
+              >
+                <option value="Transportation">
+                  Transportation
+                </option>
 
-            <label>Select Vehicle</label>
-            <br />
+                <option value="Electricity">
+                  Electricity
+                </option>
 
-            <select
-              value={vehicle}
-              onChange={(event) => setVehicle(event.target.value)}
+                <option value="Household Fuel">
+                  Household Fuel
+                </option>
+
+                <option value="Water">
+                  Water
+                </option>
+              </select>
+            </div>
+
+
+            {/* Transportation */}
+            {category === "Transportation" && (
+              <>
+
+                <div className="add-entry-divider"></div>
+
+                <div className="add-entry-form-group">
+                  <label>Transportation Mode</label>
+
+                  <select>
+                    <option value="Personal Vehicle">
+                      Personal Vehicle
+                    </option>
+
+                    <option value="Bus">
+                      Bus
+                    </option>
+
+                    <option value="Train">
+                      Train
+                    </option>
+
+                    <option value="Taxi">
+                      Taxi / Cab
+                    </option>
+
+                    <option value="Flight">
+                      Flight
+                    </option>
+
+                    <option value="Bicycle">
+                      Bicycle
+                    </option>
+
+                    <option value="Walking">
+                      Walking
+                    </option>
+                  </select>
+                </div>
+
+
+                <div className="add-entry-form-group">
+                  <label>Select Vehicle</label>
+
+                  <select
+                    value={vehicle}
+                    onChange={(event) =>
+                      setVehicle(event.target.value)
+                    }
+                  >
+                    <option value="">
+                      Select a vehicle
+                    </option>
+
+                    <option value="Honda City">
+                      Honda City
+                    </option>
+
+                    <option value="TVS Apache">
+                      TVS Apache
+                    </option>
+
+                    <option value="Tata Nexon EV">
+                      Tata Nexon EV
+                    </option>
+                  </select>
+
+                  {vehicle && (
+                    <div className="vehicle-info">
+                      <h4>Selected Vehicle</h4>
+                      <p>{vehicle}</p>
+                      <p>
+                        Vehicle information will be used
+                        to calculate emissions.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+
+                <div className="add-entry-form-group">
+                  <label>Distance Travelled (km)</label>
+
+                  <input
+                    type="number"
+                    placeholder="Enter distance"
+                    value={distance}
+                    onChange={(event) =>
+                      setDistance(event.target.value)
+                    }
+                  />
+                </div>
+
+              </>
+            )}
+
+
+            {/* Electricity */}
+            {category === "Electricity" && (
+              <div className="add-entry-form-group">
+
+                <div className="add-entry-divider"></div>
+
+                <label>
+                  Electricity Consumption (kWh)
+                </label>
+
+                <input
+                  type="number"
+                  placeholder="Enter electricity consumption"
+                />
+
+              </div>
+            )}
+
+
+            {/* Household Fuel */}
+            {category === "Household Fuel" && (
+              <div>
+
+                <div className="add-entry-divider"></div>
+
+                <div className="add-entry-form-group">
+                  <label>Fuel Type</label>
+
+                  <select>
+                    <option value="LPG">
+                      LPG
+                    </option>
+
+                    <option value="Generator Fuel">
+                      Generator Fuel
+                    </option>
+
+                    <option value="Other">
+                      Other
+                    </option>
+                  </select>
+                </div>
+
+                <div className="add-entry-form-group">
+                  <label>Fuel Consumed</label>
+
+                  <input
+                    type="number"
+                    placeholder="Enter fuel consumed"
+                  />
+                </div>
+
+              </div>
+            )}
+
+
+            {/* Water */}
+            {category === "Water" && (
+              <div className="add-entry-form-group">
+
+                <div className="add-entry-divider"></div>
+
+                <label>
+                  Water Consumption (litres)
+                </label>
+
+                <input
+                  type="number"
+                  placeholder="Enter water consumption"
+                />
+
+              </div>
+            )}
+
+
+            {/* Submit */}
+            <button
+              type="submit"
+              className="calculate-button"
             >
-              <option value="">Select a vehicle</option>
-              <option value="Honda City">Honda City</option>
-              <option value="TVS Apache">TVS Apache</option>
-              <option value="Tata Nexon EV">Tata Nexon EV</option>
-            </select>
+              Calculate Footprint
+            </button>
 
-            <br />
-            <br />
+          </form>
 
-            <label>Distance Travelled (km)</label>
-            <br />
+        </div>
 
-            <input
-              type="number"
-              value={distance}
-              onChange={(event) => setDistance(event.target.value)}
-            />
-          </div>
-        )}
+      </div>
 
-        {category === "Electricity" && (
-          <div>
-            <label>Electricity Consumption (kWh)</label>
-            <br />
-
-            <input type="number" />
-          </div>
-        )}
-
-        {category === "Household Fuel" && (
-          <div>
-            <label>Fuel Type</label>
-            <br />
-
-            <select>
-              <option value="LPG">LPG</option>
-              <option value="Generator Fuel">Generator Fuel</option>
-              <option value="Other">Other</option>
-            </select>
-
-            <br />
-            <br />
-
-            <label>Fuel Consumed</label>
-            <br />
-
-            <input type="number" />
-          </div>
-        )}
-
-        {category === "Water" && (
-          <div>
-            <label>Water Consumption (litres)</label>
-            <br />
-
-            <input type="number" />
-          </div>
-        )}
-
-        <br />
-
-        <button type="submit">
-          Calculate Footprint
-        </button>
-
-      </form>
     </div>
   );
 }

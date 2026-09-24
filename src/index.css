@@ -1585,3 +1585,232 @@ a {
     text-align: center;
   }
 } 
+/* =========================
+   ADD CARBON ENTRY
+   ========================= */
+
+.add-entry-page {
+  min-height: 100vh;
+  background-color: #f5f7f5;
+  padding: 40px 60px;
+}
+
+.add-entry-container {
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+/* Header */
+
+.add-entry-header {
+  margin-bottom: 30px;
+}
+
+.add-entry-header h1 {
+  font-size: 32px;
+  color: #263238;
+  margin-bottom: 8px;
+}
+
+.add-entry-header p {
+  color: #607d8b;
+  font-size: 14px;
+}
+
+/* Main Card */
+
+.add-entry-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 35px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8f5e9;
+}
+
+/* Form Groups */
+
+.add-entry-form-group {
+  margin-bottom: 25px;
+}
+
+.add-entry-form-group label {
+  display: block;
+  color: #263238;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 9px;
+}
+
+/* Inputs and Selects */
+
+.add-entry-form-group input,
+.add-entry-form-group select,
+.add-entry-form-group textarea {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #263238;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: 0.2s;
+}
+
+.add-entry-form-group input:focus,
+.add-entry-form-group select:focus,
+.add-entry-form-group textarea:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+.add-entry-form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Category */
+
+.category-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.category-option {
+  border: 1px solid #dfe7df;
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.category-option:hover {
+  border-color: #81c784;
+  background-color: #f1f8f2;
+}
+
+.category-option.active {
+  border-color: #2e7d32;
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.category-option-icon {
+  display: block;
+  font-size: 24px;
+  margin-bottom: 7px;
+}
+
+.category-option span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Two-column fields */
+
+.add-entry-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Vehicle Information */
+
+.vehicle-info {
+  background-color: #e8f5e9;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 15px;
+}
+
+.vehicle-info h4 {
+  color: #2e7d32;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.vehicle-info p {
+  color: #607d8b;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+/* Form Divider */
+
+.add-entry-divider {
+  height: 1px;
+  background-color: #eeeeee;
+  margin: 30px 0;
+}
+
+/* Calculate Button */
+
+.calculate-button {
+  width: 100%;
+  border: none;
+  background-color: #2e7d32;
+  color: white;
+  padding: 14px;
+  border-radius: 9px;
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.calculate-button:hover {
+  background-color: #1b5e20;
+}
+
+/* Back Button */
+
+.add-entry-back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #607d8b;
+  font-size: 13px;
+}
+
+.add-entry-back:hover {
+  color: #2e7d32;
+}
+
+/* Responsive */
+
+@media (max-width: 800px) {
+  .add-entry-page {
+    padding: 25px;
+  }
+
+  .add-entry-card {
+    padding: 25px;
+  }
+
+  .category-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .add-entry-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (max-width: 500px) {
+  .add-entry-page {
+    padding: 15px;
+  }
+
+  .add-entry-header h1 {
+    font-size: 26px;
+  }
+
+  .category-options {
+    grid-template-columns: 1fr;
+  }
+}
