@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/CarbonWise/static/css/main.0b9b317d.css",
-    "main.js": "/CarbonWise/static/js/main.40015624.js",
+    "main.js": "/CarbonWise/static/js/main.b81e18ea.js",
     "index.html": "/CarbonWise/index.html",
     "main.0b9b317d.css.map": "/CarbonWise/static/css/main.0b9b317d.css.map",
-    "main.40015624.js.map": "/CarbonWise/static/js/main.40015624.js.map"
+    "main.b81e18ea.js.map": "/CarbonWise/static/js/main.b81e18ea.js.map"
   },
   "entrypoints": [
     "static/css/main.0b9b317d.css",
-    "static/js/main.40015624.js"
+    "static/js/main.b81e18ea.js"
   ]
 }
