@@ -1,0 +1,483 @@
+import { Link } from "react-router-dom";
+import { useState } from "react";
+
+// Default profile information
+const defaultProfile = {
+  fullName: "Shashank",
+  email: "",
+  city: "",
+  age: "",
+  country: ""
+};
+
+// Load saved profile
+function getSavedProfile() {
+  try {
+    const saved = localStorage.getItem("carbonWiseProfile");
+
+    if (saved) {
+      return {
+        ...defaultProfile,
+        ...JSON.parse(saved)
+      };
+    }
+  } catch (error) {
+    console.error("Unable to load profile:", error);
+  }
+
+  return defaultProfile;
+}
+
+// Load saved data counts
+function getProfileStats() {
+  try {
+    const entries = JSON.parse(
+      localStorage.getItem("carbonWiseEntries") || "[]"
+    );
+
+    const vehicles = JSON.parse(
+      localStorage.getItem("carbonWiseVehicles") || "[]"
+    );
+
+    const totalEmissions = Array.isArray(entries)
+      ? entries.reduce(
+          (total, entry) => total + (Number(entry.emissions) || 0),
+          0
+        )
+      : 0;
+
+    return {
+      entries: Array.isArray(entries) ? entries.length : 0,
+      vehicles: Array.isArray(vehicles) ? vehicles.length : 0,
+      emissions: totalEmissions
+    };
+  } catch (error) {
+    console.error("Unable to load profile statistics:", error);
+
+    return {
+      entries: 0,
+      vehicles: 0,
+      emissions: 0
+    };
+  }
+}
+
+function Profile() {
+  const [profile, setProfile] = useState(getSavedProfile);
+  const [formData, setFormData] = useState(getSavedProfile);
+  const [stats] = useState(getProfileStats);
+
+  const [editing, setEditing] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  // Update form fields
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value
+    }));
+
+    setMessage("");
+    setError("");
+  };
+
+  // Save profile information
+  const handleSave = (event) => {
+    event.preventDefault();
+
+    const updatedProfile = {
+      fullName: formData.fullName.trim(),
+      email: formData.email.trim(),
+      city: formData.city.trim(),
+      age: formData.age,
+      country: formData.country.trim()
+    };
+
+    if (!updatedProfile.fullName) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (!updatedProfile.email) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (
+      updatedProfile.age &&
+      (
+        Number(updatedProfile.age) < 1 ||
+        Number(updatedProfile.age) > 120
+      )
+    ) {
+      setError("Please enter a valid age.");
+      return;
+    }
+
+    try {
+      localStorage.setItem(
+        "carbonWiseProfile",
+        JSON.stringify(updatedProfile)
+      );
+
+      setProfile(updatedProfile);
+      setFormData(updatedProfile);
+      setEditing(false);
+      setMessage("Profile updated successfully!");
+      setError("");
+    } catch (storageError) {
+      setError("Unable to save your profile. Please try again.");
+    }
+  };
+
+  // Cancel editing
+  const handleCancel = () => {
+    setFormData(profile);
+    setEditing(false);
+    setError("");
+    setMessage("");
+  };
+
+  // Get the user's initials
+  const initials = profile.fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join("") || "U";
+
+  return (
+    <div className="dashboard-page">
+
+      {/* Sidebar */}
+      <aside className="sidebar">
+
+        <div className="sidebar-logo">
+          <div className="logo-icon">↗</div>
+          <span>
+            Carbon<span>Wise</span>
+          </span>
+        </div>
+
+        <nav className="sidebar-nav">
+
+          <Link to="/dashboard" className="sidebar-link">
+            <span>▣</span>
+            Dashboard
+          </Link>
+
+          <Link to="/add-entry" className="sidebar-link">
+            <span>＋</span>
+            Add Carbon Entry
+          </Link>
+
+          <Link to="/vehicles" className="sidebar-link">
+            <span>🚗</span>
+            My Vehicles
+          </Link>
+
+          <Link to="/history" className="sidebar-link">
+            <span>◷</span>
+            Carbon History
+          </Link>
+
+          <Link to="/analytics" className="sidebar-link">
+            <span>▥</span>
+            Analytics
+          </Link>
+
+          <Link to="/profile" className="sidebar-link active">
+            <span>◉</span>
+            Profile
+          </Link>
+
+        </nav>
+
+        <div className="sidebar-bottom">
+          <Link to="/" className="sidebar-link logout-link">
+            <span>↪</span>
+            Logout
+          </Link>
+        </div>
+
+      </aside>
+
+
+      {/* Main Content */}
+      <main className="dashboard-main">
+
+        {/* Header */}
+        <header className="profile-header">
+
+          <div>
+            <h1>My Profile</h1>
+            <p>Manage your personal information and account details.</p>
+          </div>
+
+          {!editing && (
+            <button
+              className="profile-edit-main"
+              onClick={() => {
+                setEditing(true);
+                setMessage("");
+              }}
+            >
+              Edit Profile
+            </button>
+          )}
+
+        </header>
+
+
+        {/* Profile Overview */}
+        <section className="dashboard-card profile-overview">
+
+          <div className="profile-avatar">
+            {initials}
+          </div>
+
+          <div className="profile-overview-info">
+            <h2>{profile.fullName}</h2>
+
+            <p>
+              {profile.email || "Add your email address"}
+            </p>
+
+            <span className="profile-member-tag">
+              CarbonWise Member
+            </span>
+          </div>
+
+        </section>
+
+
+        {/* Account Statistics */}
+        <section className="profile-stats">
+
+          <div className="stat-card">
+            <div className="stat-card-top">
+              <span>Total Activities</span>
+              <div className="stat-icon green">▤</div>
+            </div>
+
+            <h2>{stats.entries}</h2>
+            <p>Recorded carbon activities</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-card-top">
+              <span>My Vehicles</span>
+              <div className="stat-icon blue">🚗</div>
+            </div>
+
+            <h2>{stats.vehicles}</h2>
+            <p>Vehicles in your list</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-card-top">
+              <span>Total Emissions</span>
+              <div className="stat-icon orange">♻</div>
+            </div>
+
+            <h2>
+              {stats.emissions.toFixed(2)} <small>kg CO₂e</small>
+            </h2>
+
+            <p>All recorded activities</p>
+          </div>
+
+        </section>
+
+
+        {/* Personal Information */}
+        <section className="dashboard-card profile-details-card">
+
+          <div className="profile-section-heading">
+            <div>
+              <h3>Personal Information</h3>
+              <p>Your personal details and contact information.</p>
+            </div>
+          </div>
+
+
+          {editing ? (
+
+            <form onSubmit={handleSave}>
+
+              <div className="profile-form-grid">
+
+                <div className="profile-form-group">
+                  <label>Full Name</label>
+
+                  <input
+                    type="text"
+                    name="fullName"
+                    placeholder="Enter your full name"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="profile-form-group">
+                  <label>Email Address</label>
+
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="profile-form-group">
+                  <label>City</label>
+
+                  <input
+                    type="text"
+                    name="city"
+                    placeholder="Enter your city"
+                    value={formData.city}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="profile-form-group">
+                  <label>Age</label>
+
+                  <input
+                    type="number"
+                    name="age"
+                    min="1"
+                    max="120"
+                    placeholder="Enter your age"
+                    value={formData.age}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="profile-form-group">
+                  <label>Country</label>
+
+                  <input
+                    type="text"
+                    name="country"
+                    placeholder="Enter your country"
+                    value={formData.country}
+                    onChange={handleChange}
+                  />
+                </div>
+
+              </div>
+
+              {error && (
+                <p className="profile-error" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="profile-form-actions">
+
+                <button type="submit" className="profile-save-button">
+                  Save Changes
+                </button>
+
+                <button
+                  type="button"
+                  className="profile-cancel-button"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+
+              </div>
+
+            </form>
+
+          ) : (
+
+            <div className="profile-details-grid">
+
+              <div className="profile-detail">
+                <span>Full Name</span>
+                <strong>{profile.fullName || "Not provided"}</strong>
+              </div>
+
+              <div className="profile-detail">
+                <span>Email Address</span>
+                <strong>{profile.email || "Not provided"}</strong>
+              </div>
+
+              <div className="profile-detail">
+                <span>City</span>
+                <strong>{profile.city || "Not provided"}</strong>
+              </div>
+
+              <div className="profile-detail">
+                <span>Age</span>
+                <strong>{profile.age || "Not provided"}</strong>
+              </div>
+
+              <div className="profile-detail">
+                <span>Country</span>
+                <strong>{profile.country || "Not provided"}</strong>
+              </div>
+
+            </div>
+
+          )}
+
+          {message && (
+            <p className="profile-success" role="status">
+              {message}
+            </p>
+          )}
+
+        </section>
+
+
+        {/* Account Information */}
+        <section className="dashboard-card profile-account-card">
+
+          <div className="profile-section-heading">
+            <div>
+              <h3>Account Information</h3>
+              <p>About your CarbonWise account.</p>
+            </div>
+          </div>
+
+          <div className="profile-account-row">
+            <span>Account Type</span>
+            <strong>Personal Account</strong>
+          </div>
+
+          <div className="profile-account-row">
+            <span>Data Storage</span>
+            <strong>Browser Local Storage</strong>
+          </div>
+
+          <div className="profile-account-row">
+            <span>Application</span>
+            <strong>CarbonWise</strong>
+          </div>
+
+        </section>
+
+        <p className="profile-disclaimer">
+          Profile information is currently stored in this browser.
+          Server-based account management will be added during backend integration.
+        </p>
+
+      </main>
+    </div>
+  );
+}
+
+export default Profile;

@@ -1,18 +1,262 @@
 import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+
+// Read saved entries from the browser
+function getSavedEntries() {
+  try {
+    const savedData = localStorage.getItem("carbonWiseEntries");
+    const parsedData = savedData ? JSON.parse(savedData) : [];
+
+    return Array.isArray(parsedData) ? parsedData : [];
+  } catch (error) {
+    console.error("Error loading carbon entries:", error);
+    return [];
+  }
+}
+
+// Convert a date into YYYY-MM-DD format
+function getDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// Format an entry date for display
+function formatEntryDate(dateValue) {
+  if (!dateValue) return "Date unavailable";
+
+  const entryDate = new Date(`${dateValue}T00:00:00`);
+
+  if (Number.isNaN(entryDate.getTime())) {
+    return dateValue;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  entryDate.setHours(0, 0, 0, 0);
+
+  if (entryDate.getTime() === today.getTime()) {
+    return "Today";
+  }
+
+  if (entryDate.getTime() === yesterday.getTime()) {
+    return "Yesterday";
+  }
+
+  return entryDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  });
+}
 
 function Dashboard() {
-  const [monthlyEmissions, setMonthlyEmissions] = useState(245.6);
-  const carbonSaved = 38.2;
+  const [entries, setEntries] = useState(getSavedEntries);
 
-  const goalProgress = useMemo(() => {
-    const target = 340;
-    return Math.round((monthlyEmissions / target) * 100);
-  }, [monthlyEmissions]);
+  // Refresh saved entries when the page becomes active
+  useEffect(() => {
+    const refreshEntries = () => {
+      setEntries(getSavedEntries());
+    };
 
-  const handleAddEmission = () => {
-    setMonthlyEmissions(monthlyEmissions + 5);
+    window.addEventListener("storage", refreshEntries);
+    window.addEventListener("focus", refreshEntries);
+
+    return () => {
+      window.removeEventListener("storage", refreshEntries);
+      window.removeEventListener("focus", refreshEntries);
+    };
+  }, []);
+
+  // Current date
+  const today = getDateString(new Date());
+  const currentMonth = today.substring(0, 7);
+
+  // Today's and this month's entries
+  const todayEntries = entries.filter(
+    (entry) => entry.date === today
+  );
+
+  const monthlyEntries = entries.filter(
+    (entry) =>
+      typeof entry.date === "string" &&
+      entry.date.substring(0, 7) === currentMonth
+  );
+
+  // Calculate emissions
+  const calculateTotal = (entryList) => {
+    return entryList.reduce(
+      (total, entry) => total + (Number(entry.emissions) || 0),
+      0
+    );
   };
+
+  const todayEmissions = calculateTotal(todayEntries);
+  const monthlyEmissions = calculateTotal(monthlyEntries);
+  const totalEmissions = calculateTotal(entries);
+
+  // Category information
+  const categories = [
+    {
+      name: "Transportation",
+      color: "#2e7d32",
+      className: "transportation"
+    },
+    {
+      name: "Electricity",
+      color: "#42a5f5",
+      className: "electricity"
+    },
+    {
+      name: "Household Fuel",
+      color: "#81c784",
+      className: "household"
+    },
+    {
+      name: "Water",
+      color: "#ffb74d",
+      className: "water"
+    }
+  ];
+
+  // Calculate emissions for each category
+  const categoryStats = categories.map((category) => {
+    const categoryEntries = monthlyEntries.filter(
+      (entry) => entry.category === category.name
+    );
+
+    const amount = calculateTotal(categoryEntries);
+
+    const percentage =
+      monthlyEmissions > 0
+        ? (amount / monthlyEmissions) * 100
+        : 0;
+
+    return {
+      ...category,
+      amount,
+      percentage
+    };
+  });
+
+  // Create the dynamic donut chart
+  let currentPercentage = 0;
+
+  const donutSegments = categoryStats.map((category) => {
+    const start = currentPercentage;
+    currentPercentage += category.percentage;
+
+    return `${category.color} ${start}% ${currentPercentage}%`;
+  });
+
+  const donutBackground =
+    monthlyEmissions > 0
+      ? `conic-gradient(${donutSegments.join(", ")})`
+      : "#e8f5e9";
+
+  // Recent activities: newest entries first
+  const recentEntries = [...entries]
+    .sort((a, b) => {
+      const dateDifference = String(b.date || "").localeCompare(
+        String(a.date || "")
+      );
+
+      if (dateDifference !== 0) {
+        return dateDifference;
+      }
+
+      return Number(b.id || 0) - Number(a.id || 0);
+    })
+    .slice(0, 5);
+
+  // Category icons for recent activities
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case "Transportation":
+        return "🚗";
+      case "Electricity":
+        return "⚡";
+      case "Household Fuel":
+        return "🔥";
+      case "Water":
+        return "💧";
+      default:
+        return "🌱";
+    }
+  };
+
+  // Prepare the last seven days for the emissions chart
+  const weeklyData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - index));
+
+    const dateString = getDateString(date);
+
+    const dailyEntries = entries.filter(
+      (entry) => entry.date === dateString
+    );
+
+    return {
+      date: dateString,
+      label: date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short"
+      }),
+      emissions: calculateTotal(dailyEntries)
+    };
+  });
+
+  const chartMax = Math.max(
+    ...weeklyData.map((day) => day.emissions)
+  );
+
+  const chartPoints = weeklyData
+    .map((day, index) => {
+      const x = (index / 6) * 100;
+
+      const y =
+        chartMax > 0
+          ? 95 - (day.emissions / chartMax) * 85
+          : 95;
+
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  const chartAxisValues =
+    chartMax > 0
+      ? [
+          chartMax,
+          chartMax * 0.75,
+          chartMax * 0.5,
+          chartMax * 0.25,
+          0
+        ]
+      : [0, 0, 0, 0, 0];
+
+  // Environmental insight based on actual entries
+  const highestCategory = [...categoryStats].sort(
+    (a, b) => b.amount - a.amount
+  )[0];
+
+  let insightMessage = "Add your first carbon entry to start tracking your environmental impact.";
+
+  if (monthlyEmissions > 0) {
+    insightMessage =
+      `Your largest recorded emission source this month is ${highestCategory.name}, ` +
+      `contributing ${highestCategory.amount.toFixed(2)} kg CO₂e. ` +
+      `Look for ways to reduce this category.`;
+  } else if (entries.length > 0) {
+    insightMessage =
+      "You have saved carbon entries, but none have been recorded in the current month yet.";
+  }
 
   return (
     <div className="dashboard-page">
@@ -54,7 +298,7 @@ function Dashboard() {
             Analytics
           </Link>
 
-          <Link to="/" className="sidebar-link">
+          <Link to="/profile" className="sidebar-link">
             <span>◉</span>
             Profile
           </Link>
@@ -102,20 +346,22 @@ function Dashboard() {
         {/* Statistics */}
         <section className="stats-grid">
 
+          {/* Today's Emissions */}
           <div className="stat-card">
             <div className="stat-card-top">
               <span>Today's Emissions</span>
               <div className="stat-icon green">☀</div>
             </div>
 
-            <h2>12.4 <small>kg CO₂e</small></h2>
+            <h2>
+              {todayEmissions.toFixed(2)} <small>kg CO₂e</small>
+            </h2>
 
-            <p className="stat-positive">
-              ↓ 4.2% from yesterday
-            </p>
+            <p>Based on today's saved entries</p>
           </div>
 
 
+          {/* Monthly Emissions */}
           <div className="stat-card">
             <div className="stat-card-top">
               <span>Monthly Emissions</span>
@@ -123,47 +369,38 @@ function Dashboard() {
             </div>
 
             <h2>
-              {monthlyEmissions} <small>kg CO₂e</small>
+              {monthlyEmissions.toFixed(2)} <small>kg CO₂e</small>
             </h2>
 
-            <p className="stat-positive">
-              ↓ 8.4% from last month
-            </p>
+            <p>Current month's total emissions</p>
           </div>
 
 
+          {/* All-Time Emissions */}
           <div className="stat-card">
             <div className="stat-card-top">
-              <span>Carbon Saved</span>
+              <span>All-Time Emissions</span>
               <div className="stat-icon green">♻</div>
             </div>
 
             <h2>
-              {carbonSaved} <small>kg CO₂e</small>
+              {totalEmissions.toFixed(2)} <small>kg CO₂e</small>
             </h2>
 
-            <p className="stat-positive">
-              ↑ 12.6% this month
-            </p>
+            <p>Total emissions from saved entries</p>
           </div>
 
 
+          {/* Total Entries */}
           <div className="stat-card">
             <div className="stat-card-top">
-              <span>Goal Progress</span>
-              <div className="stat-icon orange">🎯</div>
+              <span>Total Entries</span>
+              <div className="stat-icon orange">▤</div>
             </div>
 
-            <h2>{goalProgress}%</h2>
+            <h2>{entries.length}</h2>
 
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${Math.min(goalProgress, 100)}%` }}
-              ></div>
-            </div>
-
-            <p>Monthly reduction target</p>
+            <p>Activities recorded so far</p>
           </div>
 
         </section>
@@ -177,52 +414,73 @@ function Dashboard() {
 
             <div className="card-header">
               <div>
-                <h3>30-Day Emissions Trend</h3>
+                <h3>7-Day Emissions Trend</h3>
                 <p>Your daily carbon emissions</p>
               </div>
-
-              <select>
-                <option>Last 30 Days</option>
-                <option>Last 7 Days</option>
-                <option>This Month</option>
-              </select>
             </div>
 
             <div className="chart-area">
 
               <div className="chart-y-axis">
-                <span>20</span>
-                <span>15</span>
-                <span>10</span>
-                <span>5</span>
-                <span>0</span>
+                {chartAxisValues.map((value, index) => (
+                  <span key={index}>
+                    {value.toFixed(1)}
+                  </span>
+                ))}
               </div>
 
               <div className="line-chart">
 
-                <div className="chart-line">
-                  <span style={{ left: "5%", top: "55%" }}></span>
-                  <span style={{ left: "15%", top: "40%" }}></span>
-                  <span style={{ left: "25%", top: "48%" }}></span>
-                  <span style={{ left: "35%", top: "30%" }}></span>
-                  <span style={{ left: "45%", top: "42%" }}></span>
-                  <span style={{ left: "55%", top: "25%" }}></span>
-                  <span style={{ left: "65%", top: "35%" }}></span>
-                  <span style={{ left: "75%", top: "20%" }}></span>
-                  <span style={{ left: "85%", top: "30%" }}></span>
-                  <span style={{ left: "95%", top: "18%" }}></span>
-                </div>
+                <svg
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    left: 0,
+                    top: 0
+                  }}
+                >
+                  <polyline
+                    points={chartPoints}
+                    fill="none"
+                    stroke="#2e7d32"
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+
+                  {weeklyData.map((day, index) => {
+                    const x = (index / 6) * 100;
+
+                    const y =
+                      chartMax > 0
+                        ? 95 - (day.emissions / chartMax) * 85
+                        : 95;
+
+                    return (
+                      <circle
+                        key={day.date}
+                        cx={x}
+                        cy={y}
+                        r="1.5"
+                        fill="#2e7d32"
+                        stroke="white"
+                        strokeWidth="0.5"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })}
+                </svg>
 
               </div>
 
             </div>
 
             <div className="chart-labels">
-              <span>Jun 1</span>
-              <span>Jun 7</span>
-              <span>Jun 14</span>
-              <span>Jun 21</span>
-              <span>Jun 30</span>
+              {weeklyData.map((day) => (
+                <span key={day.date}>{day.label}</span>
+              ))}
             </div>
 
           </div>
@@ -240,9 +498,12 @@ function Dashboard() {
 
             <div className="donut-container">
 
-              <div className="donut-chart">
+              <div
+                className="donut-chart"
+                style={{ background: donutBackground }}
+              >
                 <div className="donut-center">
-                  <strong>245.6</strong>
+                  <strong>{monthlyEmissions.toFixed(2)}</strong>
                   <span>kg CO₂e</span>
                 </div>
               </div>
@@ -251,29 +512,19 @@ function Dashboard() {
 
             <div className="category-list">
 
-              <div>
-                <span className="category-dot transportation"></span>
-                <span>Transportation</span>
-                <strong>42%</strong>
-              </div>
+              {categoryStats.map((category) => (
+                <div key={category.name}>
+                  <span
+                    className={`category-dot ${category.className}`}
+                  ></span>
 
-              <div>
-                <span className="category-dot electricity"></span>
-                <span>Electricity</span>
-                <strong>28%</strong>
-              </div>
+                  <span>{category.name}</span>
 
-              <div>
-                <span className="category-dot household"></span>
-                <span>Household Fuel</span>
-                <strong>18%</strong>
-              </div>
-
-              <div>
-                <span className="category-dot water"></span>
-                <span>Water</span>
-                <strong>12%</strong>
-              </div>
+                  <strong>
+                    {category.percentage.toFixed(1)}%
+                  </strong>
+                </div>
+              ))}
 
             </div>
 
@@ -299,38 +550,39 @@ function Dashboard() {
 
             <div className="activity-list">
 
-              <div className="activity-item">
-                <div className="activity-icon">🚗</div>
+              {recentEntries.length === 0 ? (
 
-                <div className="activity-info">
-                  <strong>Honda City</strong>
-                  <span>Transportation • Today</span>
-                </div>
+                <p>
+                  No activities recorded yet. Add your first carbon entry!
+                </p>
 
-                <strong>6.2 kg</strong>
-              </div>
+              ) : (
 
-              <div className="activity-item">
-                <div className="activity-icon">⚡</div>
+                recentEntries.map((entry) => (
+                  <div className="activity-item" key={entry.id}>
 
-                <div className="activity-info">
-                  <strong>Electricity Usage</strong>
-                  <span>Electricity • Yesterday</span>
-                </div>
+                    <div className="activity-icon">
+                      {getCategoryIcon(entry.category)}
+                    </div>
 
-                <strong>3.1 kg</strong>
-              </div>
+                    <div className="activity-info">
+                      <strong>
+                        {entry.activity || entry.category}
+                      </strong>
 
-              <div className="activity-item">
-                <div className="activity-icon">🔥</div>
+                      <span>
+                        {entry.category} • {formatEntryDate(entry.date)}
+                      </span>
+                    </div>
 
-                <div className="activity-info">
-                  <strong>LPG Consumption</strong>
-                  <span>Household Fuel • Sep 21</span>
-                </div>
+                    <strong>
+                      {(Number(entry.emissions) || 0).toFixed(2)} kg
+                    </strong>
 
-                <strong>1.8 kg</strong>
-              </div>
+                  </div>
+                ))
+
+              )}
 
             </div>
 
@@ -346,12 +598,7 @@ function Dashboard() {
 
             <h3>Environmental Insight</h3>
 
-            <p>
-              Your transportation emissions make up the
-              largest part of your carbon footprint this month.
-              Consider using public transport or carpooling
-              when possible.
-            </p>
+            <p>{insightMessage}</p>
 
             <Link to="/analytics">
               View Detailed Analytics →
@@ -383,15 +630,6 @@ function Dashboard() {
           </div>
 
         </section>
-
-
-        {/* Temporary React demonstration */}
-        <button
-          onClick={handleAddEmission}
-          className="sample-button"
-        >
-          Add Sample Emission (+5 kg)
-        </button>
 
       </main>
 
