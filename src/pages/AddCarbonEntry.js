@@ -232,7 +232,6 @@ function AddCarbonEntry() {
         <div className="add-entry-card">
 
           <form onSubmit={handleSubmit}>
-          <form onSubmit={handleSubmit}>
 
             {/* Category */}
 
@@ -257,7 +256,6 @@ function AddCarbonEntry() {
 
             {category === "Transportation" && (
               <>
-
                 <div className="add-entry-divider"></div>
 
                 <div className="add-entry-form-group">
@@ -290,6 +288,7 @@ function AddCarbonEntry() {
                       required
                     >
                       <option value="">Select a vehicle</option>
+
                       {Object.keys(VEHICLES).map((name) => (
                         <option key={name} value={name}>
                           {name}
@@ -327,7 +326,6 @@ function AddCarbonEntry() {
                     required
                   />
                 </div>
-
               </>
             )}
 
@@ -452,12 +450,6 @@ function AddCarbonEntry() {
             >
               Calculate Footprint
             </button>
-
-          </form>
-
-        </div>
-
-      </div>
 
           </form>
 

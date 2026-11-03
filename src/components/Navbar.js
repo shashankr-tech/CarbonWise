@@ -1,6 +1,20 @@
+
 import { Link } from "react-router-dom";
 
 function Navbar() {
+  const scrollToSection = (event, sectionId) => {
+    event.preventDefault();
+
+    const section = document.getElementById(sectionId);
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-logo">
@@ -11,10 +25,33 @@ function Navbar() {
       </div>
 
       <div className="navbar-links">
-        <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#impact">Impact</a>
-        <a href="#about">About</a>
+        <a
+          href="#features"
+          onClick={(event) => scrollToSection(event, "features")}
+        >
+          Features
+        </a>
+
+        <a
+          href="#how-it-works"
+          onClick={(event) => scrollToSection(event, "how-it-works")}
+        >
+          How It Works
+        </a>
+
+        <a
+          href="#impact"
+          onClick={(event) => scrollToSection(event, "impact")}
+        >
+          Impact
+        </a>
+
+        <a
+          href="#about"
+          onClick={(event) => scrollToSection(event, "about")}
+        >
+          About
+        </a>
       </div>
 
       <div className="navbar-buttons">

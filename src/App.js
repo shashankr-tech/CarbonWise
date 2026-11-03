@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -16,7 +16,7 @@ import RTOOfficerDashboard from "./pages/RTOOfficerDashboard";
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
 
         <Route path="/" element={<Landing />} />
@@ -44,7 +44,7 @@ function App() {
         <Route path="/rto-dashboard" element={<RTOOfficerDashboard />} />
 
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
