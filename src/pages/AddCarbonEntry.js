@@ -232,6 +232,7 @@ function AddCarbonEntry() {
         <div className="add-entry-card">
 
           <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
 
             {/* Category */}
 
@@ -451,6 +452,12 @@ function AddCarbonEntry() {
             >
               Calculate Footprint
             </button>
+
+          </form>
+
+        </div>
+
+      </div>
 
           </form>
 
