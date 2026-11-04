@@ -1,6 +1,68 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
+
 
 function Register() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [city, setCity] = useState("");
+  const [age, setAge] = useState("");
+  const [country, setCountry] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setMessage("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(
+        "http://localhost:5000/api/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed.");
+      }
+
+      setMessage(data.message || "Registration successful!");
+    } catch (error) {
+      setMessage(
+        error.message || "Unable to connect to the backend."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="auth-page">
 
@@ -54,7 +116,7 @@ function Register() {
             Join CarbonWise and start tracking your carbon footprint.
           </p>
 
-          <form>
+          <form onSubmit={handleSubmit}>
 
             {/* Full Name */}
             <div className="form-group">
@@ -62,6 +124,9 @@ function Register() {
               <input
                 type="text"
                 placeholder="Enter your full name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
               />
             </div>
 
@@ -71,6 +136,9 @@ function Register() {
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
               />
             </div>
 
@@ -80,6 +148,10 @@ function Register() {
               <input
                 type="password"
                 placeholder="Create a password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                minLength="6"
+                required
               />
             </div>
 
@@ -89,6 +161,11 @@ function Register() {
               <input
                 type="password"
                 placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(event) =>
+                  setConfirmPassword(event.target.value)
+                }
+                required
               />
             </div>
 
@@ -100,6 +177,8 @@ function Register() {
                 <input
                   type="text"
                   placeholder="Enter your city"
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
                 />
               </div>
 
@@ -109,6 +188,8 @@ function Register() {
                   type="number"
                   placeholder="Age"
                   min="1"
+                  value={age}
+                  onChange={(event) => setAge(event.target.value)}
                 />
               </div>
 
@@ -123,13 +204,22 @@ function Register() {
               <input
                 type="text"
                 placeholder="Enter your country"
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
               />
             </div>
 
             {/* Terms */}
             <div className="terms-row">
               <label>
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(event) =>
+                    setAcceptedTerms(event.target.checked)
+                  }
+                />
+
                 <span>
                   I agree to the <a href="#terms">Terms of Service</a>{" "}
                   and <a href="#privacy">Privacy Policy</a>.
@@ -137,9 +227,20 @@ function Register() {
               </label>
             </div>
 
+            {/* Response Message */}
+            {message && (
+              <p role="status" className="auth-message">
+                {message}
+              </p>
+            )}
+
             {/* Submit */}
-            <button type="submit" className="auth-submit">
-              Create Account
+            <button
+              type="submit"
+              className="auth-submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating Account..." : "Create Account"}
             </button>
 
           </form>

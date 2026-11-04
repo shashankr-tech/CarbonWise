@@ -1,18 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-// Load submitted reports
-function getReports() {
-  try {
-    const saved = localStorage.getItem("carbonWiseRTOReports");
-    const parsed = saved ? JSON.parse(saved) : [];
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error("Unable to load RTO reports:", error);
-    return [];
-  }
-}
+const API_URL = "http://localhost:5000/api/rto";
 
 // Format submission date
 function formatDate(dateValue) {
@@ -25,30 +14,59 @@ function formatDate(dateValue) {
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
-    year: "numeric"
+    year: "numeric",
   });
 }
 
 function RTOOfficerDashboard() {
-  const [reports, setReports] = useState(getReports);
+  const [reports, setReports] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
 
-  // Refresh reports when returning to this page
+  // Fetch reports from MongoDB
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("carbonWiseToken");
+
+      if (!token) {
+        setError("Please log in again. Your login token was not found.");
+        return;
+      }
+
+      const response = await fetch(API_URL, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load RTO reports.");
+      }
+
+      const reportList = Array.isArray(data)
+        ? data
+        : data.reports || data.data || [];
+
+      setReports(reportList);
+    } catch (err) {
+      setError(err.message || "Unable to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const refreshReports = () => {
-      setReports(getReports());
-    };
-
-    window.addEventListener("storage", refreshReports);
-    window.addEventListener("focus", refreshReports);
-
-    return () => {
-      window.removeEventListener("storage", refreshReports);
-      window.removeEventListener("focus", refreshReports);
-    };
+    fetchReports();
   }, []);
 
   // Summary statistics
@@ -73,7 +91,7 @@ function RTOOfficerDashboard() {
         report.email,
         report.registrationNumber,
         report.vehicleName,
-        report.city
+        report.city,
       ]
         .filter(Boolean)
         .join(" ")
@@ -94,30 +112,55 @@ function RTOOfficerDashboard() {
         new Date(a.submittedAt).getTime()
     );
 
-  // Update submission status
-  const updateStatus = (id, newStatus) => {
-    const updatedReports = reports.map((report) =>
-      String(report.id) === String(id)
-        ? {
-            ...report,
-            status: newStatus,
-            reviewedAt: new Date().toISOString()
-          }
-        : report
-    );
-
+  // Update report status in MongoDB
+  const updateStatus = async (id, newStatus) => {
     try {
-      localStorage.setItem(
-        "carbonWiseRTOReports",
-        JSON.stringify(updatedReports)
+      setUpdatingId(id);
+      setMessage("");
+      setError("");
+
+      const token = localStorage.getItem("carbonWiseToken");
+
+      if (!token) {
+        throw new Error("Please log in again. Your login token was not found.");
+      }
+
+      const response = await fetch(`${API_URL}/${id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to update report status.");
+      }
+
+      // Update the displayed report after server confirmation
+      setReports((previousReports) =>
+        previousReports.map((report) =>
+          String(report._id) === String(id)
+            ? {
+                ...report,
+                status: newStatus,
+                reviewedAt:
+                  data.report?.reviewedAt || new Date().toISOString(),
+              }
+            : report
+        )
       );
 
-      setReports(updatedReports);
       setMessage(`Submission status updated to "${newStatus}".`);
-      setError("");
-    } catch (storageError) {
-      setError("Unable to update the submission. Please try again.");
-      setMessage("");
+    } catch (err) {
+      setError(err.message || "Unable to update the submission.");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -137,10 +180,8 @@ function RTOOfficerDashboard() {
 
   return (
     <div className="dashboard-page">
-
       {/* Sidebar */}
       <aside className="sidebar">
-
         <div className="sidebar-logo">
           <div className="logo-icon">↗</div>
           <span>
@@ -149,7 +190,6 @@ function RTOOfficerDashboard() {
         </div>
 
         <nav className="sidebar-nav">
-
           <Link to="/dashboard" className="sidebar-link">
             <span>▣</span>
             Main Dashboard
@@ -167,7 +207,6 @@ function RTOOfficerDashboard() {
             <span>▤</span>
             RTO Officer Portal
           </Link>
-
         </nav>
 
         <div className="sidebar-bottom">
@@ -176,21 +215,15 @@ function RTOOfficerDashboard() {
             Exit Portal
           </Link>
         </div>
-
       </aside>
-
 
       {/* Main Content */}
       <main className="dashboard-main">
-
         {/* Header */}
         <header className="rto-officer-header">
-
           <div>
             <h1>RTO Officer Dashboard</h1>
-            <p>
-              Review and manage submitted vehicle information.
-            </p>
+            <p>Review and manage submitted vehicle information.</p>
           </div>
 
           <Link
@@ -199,9 +232,7 @@ function RTOOfficerDashboard() {
           >
             ← Submission Portal
           </Link>
-
         </header>
-
 
         {/* Prototype Notice */}
         <div className="rto-notice">
@@ -212,15 +243,13 @@ function RTOOfficerDashboard() {
 
             <p>
               This is a simulated officer interface for the CarbonWise
-              project. All records and status updates are stored locally.
+              project. Records and status updates are stored in MongoDB.
             </p>
           </div>
         </div>
 
-
         {/* Summary Cards */}
         <section className="stats-grid rto-officer-stats">
-
           <div className="stat-card">
             <div className="stat-card-top">
               <span>Total Submissions</span>
@@ -260,9 +289,7 @@ function RTOOfficerDashboard() {
             <h2>{informationCount}</h2>
             <p>Require additional details</p>
           </div>
-
         </section>
-
 
         {/* Review Messages */}
         {message && (
@@ -277,10 +304,8 @@ function RTOOfficerDashboard() {
           </p>
         )}
 
-
         {/* Filters */}
         <section className="dashboard-card rto-officer-filter">
-
           <div className="rto-section-heading">
             <div>
               <h3>Vehicle Submissions</h3>
@@ -289,7 +314,6 @@ function RTOOfficerDashboard() {
           </div>
 
           <div className="rto-officer-filters">
-
             <div className="rto-officer-search">
               <label>Search Submissions</label>
 
@@ -311,20 +335,22 @@ function RTOOfficerDashboard() {
                 <option value="All">All Statuses</option>
                 <option value="Pending Review">Pending Review</option>
                 <option value="Approved">Approved</option>
-                <option value="Needs Information">Needs Information</option>
+                <option value="Needs Information">
+                  Needs Information
+                </option>
               </select>
             </div>
-
           </div>
-
         </section>
-
 
         {/* Submission Records */}
         <section className="rto-officer-records">
-
-          {filteredReports.length === 0 ? (
-
+          {loading ? (
+            <div className="dashboard-card rto-officer-empty">
+              <h3>Loading Submissions...</h3>
+              <p>Please wait while reports are fetched from MongoDB.</p>
+            </div>
+          ) : filteredReports.length === 0 ? (
             <div className="dashboard-card rto-officer-empty">
               <div>📋</div>
               <h3>No Submissions Found</h3>
@@ -333,16 +359,14 @@ function RTOOfficerDashboard() {
                 There are no vehicle submissions matching your search.
               </p>
             </div>
-
           ) : (
-
             filteredReports.map((report) => (
-
-              <div className="dashboard-card rto-officer-record" key={report.id}>
-
+              <div
+                className="dashboard-card rto-officer-record"
+                key={report._id}
+              >
                 {/* Record Header */}
                 <div className="rto-record-header">
-
                   <div>
                     <span className="rto-record-reference">
                       {report.requestNumber}
@@ -356,17 +380,16 @@ function RTOOfficerDashboard() {
                   </div>
 
                   <span
-                    className={`rto-officer-status ${getStatusClass(report.status)}`}
+                    className={`rto-officer-status ${getStatusClass(
+                      report.status
+                    )}`}
                   >
                     {report.status}
                   </span>
-
                 </div>
-
 
                 {/* Record Details */}
                 <div className="rto-record-grid">
-
                   <div>
                     <span>Vehicle Owner</span>
                     <strong>{report.ownerName}</strong>
@@ -398,13 +421,10 @@ function RTOOfficerDashboard() {
                       {Number(report.emissionFactor).toFixed(4)} kg CO₂e/km
                     </strong>
                   </div>
-
                 </div>
-
 
                 {/* Additional Information */}
                 <details className="rto-record-extra">
-
                   <summary>View Additional Information</summary>
 
                   <div>
@@ -415,7 +435,7 @@ function RTOOfficerDashboard() {
 
                     <p>
                       <strong>Vehicle Efficiency:</strong>{" "}
-                      {report.efficiency}
+                      {report.efficiency || "Not provided"}
                     </p>
 
                     <p>
@@ -435,28 +455,28 @@ function RTOOfficerDashboard() {
                         : "Not reviewed yet"}
                     </p>
                   </div>
-
                 </details>
-
 
                 {/* Officer Actions */}
                 <div className="rto-record-actions">
-
                   <span>Officer Actions</span>
 
                   <div>
-
                     <button
                       className="rto-approve-button"
-                      onClick={() => updateStatus(report.id, "Approved")}
+                      disabled={updatingId === report._id}
+                      onClick={() =>
+                        updateStatus(report._id, "Approved")
+                      }
                     >
                       ✓ Approve
                     </button>
 
                     <button
                       className="rto-information-button"
+                      disabled={updatingId === report._id}
                       onClick={() =>
-                        updateStatus(report.id, "Needs Information")
+                        updateStatus(report._id, "Needs Information")
                       }
                     >
                       Request Information
@@ -464,23 +484,19 @@ function RTOOfficerDashboard() {
 
                     <button
                       className="rto-reset-button"
-                      onClick={() => updateStatus(report.id, "Pending Review")}
+                      disabled={updatingId === report._id}
+                      onClick={() =>
+                        updateStatus(report._id, "Pending Review")
+                      }
                     >
                       Reset to Pending
                     </button>
-
                   </div>
-
                 </div>
-
               </div>
-
             ))
-
           )}
-
         </section>
-
       </main>
     </div>
   );

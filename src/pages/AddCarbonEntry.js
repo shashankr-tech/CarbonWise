@@ -46,7 +46,7 @@ function AddCarbonEntry() {
   // Validation error
   const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
@@ -196,16 +196,51 @@ function AddCarbonEntry() {
       date: entryDate
     };
 
-    // Pass calculated result to Carbon Result page
-    try {
+    
+// Save the carbon entry to the backend
+try {
+    // Get the JWT token saved during login
+    const token = localStorage.getItem("carbonWiseToken");
+
+    // Check whether the user is logged in
+    if (!token) {
+        navigate("/login");
+        return;
+    }
+
+    const response = await fetch(
+        "http://localhost:5000/api/entries",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(entry),
+        }
+    );
+
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to save carbon entry."
+        );
+      }
+
+      // Pass the saved entry to the Carbon Result page
       sessionStorage.setItem(
         "carbonWisePendingEntry",
-        JSON.stringify(entry)
+        JSON.stringify(data.entry)
       );
 
       navigate("/carbon-result");
-    } catch (storageError) {
-      setError("Unable to process the result. Please try again.");
+
+    } catch (error) {
+      setError(
+        error.message || "Unable to connect to the backend."
+      );
     }
   };
 

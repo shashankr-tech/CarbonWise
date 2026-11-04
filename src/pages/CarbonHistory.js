@@ -1,19 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-// Load saved carbon entries
-function getSavedEntries() {
-  try {
-    const savedData = localStorage.getItem("carbonWiseEntries");
-    const parsedData = savedData ? JSON.parse(savedData) : [];
-
-    return Array.isArray(parsedData) ? parsedData : [];
-  } catch (error) {
-    console.error("Error loading entries:", error);
-    return [];
-  }
-}
-
 // Format date for display
 function formatDate(dateValue) {
   if (!dateValue) return "N/A";
@@ -25,7 +12,7 @@ function formatDate(dateValue) {
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
-    year: "numeric"
+    year: "numeric",
   });
 }
 
@@ -46,26 +33,62 @@ function getCategoryIcon(category) {
 }
 
 function CarbonHistory() {
-  const [entries, setEntries] = useState(getSavedEntries);
+  const [entries, setEntries] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchText, setSearchText] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // Refresh entries when returning to this page
+  // Fetch entries from the backend
+
+const fetchEntries = async () => {
+    try {
+        setIsLoading(true);
+        setError("");
+
+        // Get the JWT token
+        const token = localStorage.getItem("carbonWiseToken");
+
+        if (!token) {
+            throw new Error("Please log in again to view your carbon history.");
+        }
+
+        // Fetch entries with authentication
+        const response = await fetch(
+            "http://localhost:5000/api/entries",
+            {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to load carbon entries."
+            );
+        }
+
+        setEntries(Array.isArray(data.entries) ? data.entries : []);
+
+    } catch (error) {
+        setError(
+            error.message || "Unable to connect to the backend."
+        );
+    } finally {
+        setIsLoading(false);
+    }
+};
+
+
+  // Load entries when page opens
   useEffect(() => {
-    const refreshEntries = () => {
-      setEntries(getSavedEntries());
-    };
-
-    window.addEventListener("storage", refreshEntries);
-    window.addEventListener("focus", refreshEntries);
-
-    return () => {
-      window.removeEventListener("storage", refreshEntries);
-      window.removeEventListener("focus", refreshEntries);
-    };
+    fetchEntries();
   }, []);
 
   // Filter and sort entries
@@ -80,7 +103,7 @@ function CarbonHistory() {
         entry.category,
         entry.vehicle,
         entry.transportMode,
-        entry.fuelType
+        entry.fuelType,
       ]
         .filter(Boolean)
         .join(" ")
@@ -108,39 +131,70 @@ function CarbonHistory() {
         String(a.date || "")
       );
 
-      return dateDifference ||
-        Number(b.id || 0) - Number(a.id || 0);
+      return (
+        dateDifference ||
+        Number(b.id || 0) - Number(a.id || 0)
+      );
     });
 
-  // Calculate total emissions for the displayed entries
+  // Calculate total emissions for displayed entries
   const totalEmissions = filteredEntries.reduce(
-    (total, entry) => total + (Number(entry.emissions) || 0),
+    (total, entry) =>
+      total + (Number(entry.emissions) || 0),
     0
   );
 
-  // Delete an entry
-  const handleDelete = (id) => {
+  // Delete an entry through the backend
+
+const handleDelete = async (id) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this carbon entry?"
+        "Are you sure you want to delete this carbon entry?"
     );
 
     if (!confirmed) return;
 
-    const updatedEntries = entries.filter(
-      (entry) => String(entry.id) !== String(id)
-    );
-
     try {
-      localStorage.setItem(
-        "carbonWiseEntries",
-        JSON.stringify(updatedEntries)
-      );
+        setError("");
 
-      setEntries(updatedEntries);
+        // Get the JWT token
+        const token = localStorage.getItem("carbonWiseToken");
+
+        if (!token) {
+            throw new Error("Please log in again to delete this entry.");
+        }
+
+        // Delete entry with authentication
+        const response = await fetch(
+            `http://localhost:5000/api/entries/${id}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to delete this entry."
+            );
+        }
+
+        setEntries((currentEntries) =>
+            currentEntries.filter(
+                (entry) => String(entry.id) !== String(id)
+            )
+        );
+
     } catch (error) {
-      alert("Unable to delete this entry. Please try again.");
+        setError(
+            error.message || "Unable to delete this entry."
+        );
     }
-  };
+};
+
 
   // Clear all filters
   const clearFilters = () => {
@@ -206,7 +260,6 @@ function CarbonHistory() {
 
       </aside>
 
-
       {/* Main Content */}
       <main className="dashboard-main">
 
@@ -214,14 +267,18 @@ function CarbonHistory() {
         <header className="history-header">
           <div>
             <h1>Carbon History</h1>
-            <p>View and manage your recorded carbon activities.</p>
+            <p>
+              View and manage your recorded carbon activities.
+            </p>
           </div>
 
-          <Link to="/add-entry" className="dashboard-add-button">
+          <Link
+            to="/add-entry"
+            className="dashboard-add-button"
+          >
             + Add Carbon Entry
           </Link>
         </header>
-
 
         {/* Summary Cards */}
         <section className="stats-grid">
@@ -243,7 +300,8 @@ function CarbonHistory() {
             </div>
 
             <h2>
-              {totalEmissions.toFixed(2)} <small>kg CO₂e</small>
+              {totalEmissions.toFixed(2)}{" "}
+              <small>kg CO₂e</small>
             </h2>
 
             <p>Emissions from displayed entries</p>
@@ -251,14 +309,15 @@ function CarbonHistory() {
 
         </section>
 
-
         {/* Filters */}
         <section className="dashboard-card history-filter-card">
 
           <div className="history-section-heading">
             <div>
               <h3>Filter Activities</h3>
-              <p>Search and narrow down your carbon entries.</p>
+              <p>
+                Search and narrow down your carbon entries.
+              </p>
             </div>
 
             <button
@@ -273,19 +332,25 @@ function CarbonHistory() {
           <div className="history-filters">
 
             <div className="history-filter-group">
-              <label htmlFor="history-search">Search</label>
+              <label htmlFor="history-search">
+                Search
+              </label>
 
               <input
                 id="history-search"
                 type="text"
                 placeholder="Search activities..."
                 value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
+                onChange={(event) =>
+                  setSearchText(event.target.value)
+                }
               />
             </div>
 
             <div className="history-filter-group">
-              <label htmlFor="history-category">Category</label>
+              <label htmlFor="history-category">
+                Category
+              </label>
 
               <select
                 id="history-category"
@@ -295,40 +360,53 @@ function CarbonHistory() {
                 }
               >
                 <option value="All">All Categories</option>
-                <option value="Transportation">Transportation</option>
-                <option value="Electricity">Electricity</option>
-                <option value="Household Fuel">Household Fuel</option>
+                <option value="Transportation">
+                  Transportation
+                </option>
+                <option value="Electricity">
+                  Electricity
+                </option>
+                <option value="Household Fuel">
+                  Household Fuel
+                </option>
                 <option value="Water">Water</option>
               </select>
             </div>
 
             <div className="history-filter-group">
-              <label htmlFor="history-from">From Date</label>
+              <label htmlFor="history-from">
+                From Date
+              </label>
 
               <input
                 id="history-from"
                 type="date"
                 value={fromDate}
                 max={toDate || undefined}
-                onChange={(event) => setFromDate(event.target.value)}
+                onChange={(event) =>
+                  setFromDate(event.target.value)
+                }
               />
             </div>
 
             <div className="history-filter-group">
-              <label htmlFor="history-to">To Date</label>
+              <label htmlFor="history-to">
+                To Date
+              </label>
 
               <input
                 id="history-to"
                 type="date"
                 value={toDate}
                 min={fromDate || undefined}
-                onChange={(event) => setToDate(event.target.value)}
+                onChange={(event) =>
+                  setToDate(event.target.value)
+                }
               />
             </div>
 
           </div>
         </section>
-
 
         {/* Entries Table */}
         <section className="dashboard-card history-table-card">
@@ -337,29 +415,47 @@ function CarbonHistory() {
             <div>
               <h3>Recorded Activities</h3>
               <p>
-                Showing {filteredEntries.length} of {entries.length} entries.
+                Showing {filteredEntries.length} of{" "}
+                {entries.length} entries.
               </p>
             </div>
           </div>
 
-          {filteredEntries.length === 0 ? (
+          {isLoading ? (
+            <div className="history-empty">
+              <h3>Loading Carbon Entries...</h3>
+            </div>
+          ) : error ? (
+            <div className="history-empty">
+              <h3>Unable to Load Entries</h3>
+              <p>{error}</p>
 
+              <button
+                type="button"
+                className="history-add-button"
+                onClick={fetchEntries}
+              >
+                Try Again
+              </button>
+            </div>
+          ) : filteredEntries.length === 0 ? (
             <div className="history-empty">
               <div>🌱</div>
               <h3>No Carbon Entries Found</h3>
 
               <p>
-                No activities match your filters. Try changing your search
-                or add a new carbon entry.
+                No activities match your filters. Try changing
+                your search or add a new carbon entry.
               </p>
 
-              <Link to="/add-entry" className="history-add-button">
+              <Link
+                to="/add-entry"
+                className="history-add-button"
+              >
                 Add Carbon Entry
               </Link>
             </div>
-
           ) : (
-
             <div className="history-table-wrapper">
               <table className="history-table">
 
@@ -376,7 +472,6 @@ function CarbonHistory() {
 
                 <tbody>
                   {filteredEntries.map((entry) => (
-
                     <tr key={entry.id}>
 
                       <td>{formatDate(entry.date)}</td>
@@ -386,6 +481,7 @@ function CarbonHistory() {
                           <span>
                             {getCategoryIcon(entry.category)}
                           </span>
+
                           <strong>
                             {entry.activity || entry.category}
                           </strong>
@@ -412,8 +508,12 @@ function CarbonHistory() {
                         <button
                           type="button"
                           className="history-delete-button"
-                          onClick={() => handleDelete(entry.id)}
-                          aria-label={`Delete ${entry.activity || "entry"}`}
+                          onClick={() =>
+                            handleDelete(entry.id)
+                          }
+                          aria-label={`Delete ${
+                            entry.activity || "entry"
+                          }`}
                           title="Delete entry"
                         >
                           Delete
@@ -421,13 +521,11 @@ function CarbonHistory() {
                       </td>
 
                     </tr>
-
                   ))}
                 </tbody>
 
               </table>
             </div>
-
           )}
 
         </section>

@@ -1,6 +1,95 @@
-import { Link } from "react-router-dom";
+
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const navigate = useNavigate();
+
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed.");
+      }
+
+      // Check whether the backend returned user details
+      if (!data.user) {
+        throw new Error("User information was not received.");
+      }
+
+      // Check whether the backend returned a JWT token
+if (!data.token) {
+  throw new Error("Authentication token was not received.");
+}
+
+// Save JWT token in localStorage
+localStorage.setItem("carbonWiseToken", data.token);
+
+      // Get the existing profile information
+      // This preserves details such as city, age and country
+      let savedProfile = {};
+
+      try {
+        savedProfile = JSON.parse(
+          localStorage.getItem("carbonWiseProfile") || "{}"
+        );
+      } catch (error) {
+        savedProfile = {};
+      }
+
+      // Update profile with the currently logged-in user
+      const updatedProfile = {
+        ...savedProfile,
+        fullName: data.user.name,
+        email: data.user.email,
+        userId: data.user.id
+      };
+
+      // Save updated profile information
+      localStorage.setItem(
+        "carbonWiseProfile",
+        JSON.stringify(updatedProfile)
+      );
+
+      setMessage(data.message || "Login successful!");
+
+      navigate("/dashboard");
+
+    } catch (error) {
+      setMessage(
+        error.message || "Unable to connect to the backend."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="auth-page">
 
@@ -53,16 +142,21 @@ function Login() {
             Login to continue tracking your carbon footprint.
           </p>
 
-          <form>
+          <form onSubmit={handleSubmit}>
 
+            {/* Email */}
             <div className="form-group">
               <label>Email</label>
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
               />
             </div>
 
+            {/* Password */}
             <div className="form-group">
               <div className="password-label">
                 <label>Password</label>
@@ -72,18 +166,40 @@ function Login() {
               <input
                 type="password"
                 placeholder="Enter your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
               />
             </div>
 
+            {/* Remember Me */}
             <div className="remember-row">
               <label>
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(event) =>
+                    setRememberMe(event.target.checked)
+                  }
+                />
                 Remember me
               </label>
             </div>
 
-            <button type="submit" className="auth-submit">
-              Login
+            {/* Response Message */}
+            {message && (
+              <p className="auth-message" role="status">
+                {message}
+              </p>
+            )}
+
+            {/* Login Button */}
+            <button
+              type="submit"
+              className="auth-submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Login"}
             </button>
 
           </form>

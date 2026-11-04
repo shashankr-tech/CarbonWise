@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Load vehicles from My Vehicles
 function getVehicles() {
@@ -14,18 +14,6 @@ function getVehicles() {
   }
 }
 
-// Load previous RTO submissions
-function getReports() {
-  try {
-    const saved = localStorage.getItem("carbonWiseRTOReports");
-    const parsed = saved ? JSON.parse(saved) : [];
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error("Unable to load RTO reports:", error);
-    return [];
-  }
-}
 
 // Format submission date
 function formatDate(dateValue) {
@@ -45,7 +33,7 @@ function formatDate(dateValue) {
 function RTOSubmission() {
   const vehicles = getVehicles();
 
-  const [reports, setReports] = useState(getReports);
+  const [reports, setReports] = useState([]);
 
   const [ownerName, setOwnerName] = useState(() => {
     try {
@@ -71,13 +59,47 @@ function RTOSubmission() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Fetch this user's previous RTO submissions from MongoDB
+  useEffect(() => {
+    const fetchMyReports = async () => {
+      try {
+        const token = localStorage.getItem("carbonWiseToken");
+
+        if (!token) {
+          throw new Error("Please log in again to view your submissions.");
+        }
+
+        const response = await fetch(
+          "http://localhost:5000/api/rto/my",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to load your submissions.");
+        }
+
+        setReports(Array.isArray(data.reports) ? data.reports : []);
+      } catch (fetchError) {
+        setError(fetchError.message || "Unable to load your submissions.");
+      }
+    };
+
+    fetchMyReports();
+  }, []);
+
   // Find selected vehicle
   const selectedVehicle = vehicles.find(
     (vehicle) => String(vehicle.id) === vehicleId
   );
 
-  // Submit vehicle information
-  const handleSubmit = (event) => {
+  // Submit vehicle information to the backend
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
@@ -117,51 +139,63 @@ function RTOSubmission() {
       return;
     }
 
+    // Prepare vehicle information for the backend
     const report = {
-      id: Date.now(),
-      requestNumber: `RTO-${Date.now().toString().slice(-6)}`,
-
       ownerName: ownerName.trim(),
       email: email.trim(),
-
-      registrationNumber: registrationNumber
-        .trim()
-        .toUpperCase(),
-
-      vehicleId: selectedVehicle.id,
+      registrationNumber: registrationNumber.trim().toUpperCase(),
+      vehicleId: String(selectedVehicle.id),
       vehicleName: selectedVehicle.name,
       fuel: selectedVehicle.fuel,
       efficiency: selectedVehicle.efficiency,
       emissionFactor: Number(selectedVehicle.kgPerKm),
-
       city: city.trim(),
       odometer: Number(odometer),
-
-      notes: notes.trim(),
-
-      status: "Pending Review",
-      submittedAt: new Date().toISOString()
+      notes: notes.trim()
     };
 
-    const updatedReports = [report, ...reports];
-
     try {
-      localStorage.setItem(
-        "carbonWiseRTOReports",
-        JSON.stringify(updatedReports)
+      // Get the JWT token saved during login
+      const token = localStorage.getItem("carbonWiseToken");
+
+      if (!token) {
+        throw new Error("Please log in again before submitting vehicle information.");
+      }
+
+      // Send the report to the backend
+      const response = await fetch(
+        "http://localhost:5000/api/rto",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(report)
+        }
       );
 
-      setReports(updatedReports);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to submit vehicle information.");
+      }
+
+      // Add the MongoDB report to the displayed submissions
+      setReports((currentReports) => [data.report, ...currentReports]);
+
+      // Clear selected form fields after successful submission
       setRegistrationNumber("");
       setOdometer("");
       setNotes("");
 
       setSuccessMessage(
-        `Submission successful! Reference Number: ${report.requestNumber}`
+        `Submission successful! Reference Number: ${data.report.requestNumber}`
       );
-
-    } catch (storageError) {
-      setError("Unable to submit your information. Please try again.");
+    } catch (submitError) {
+      setError(
+        submitError.message || "Unable to connect to the backend."
+      );
     }
   };
 
@@ -254,8 +288,8 @@ function RTOSubmission() {
 
             <p>
               This is a CarbonWise prototype. Submitted vehicle
-              information is stored locally for demonstration and
-              is not sent to an actual RTO.
+              information is stored in the CarbonWise database for
+              demonstration and is not sent to an actual RTO.
             </p>
           </div>
         </div>
