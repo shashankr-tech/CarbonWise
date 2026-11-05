@@ -12,6 +12,7 @@ import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import RTOSubmission from "./pages/RTOSubmission";
 import RTOOfficerDashboard from "./pages/RTOOfficerDashboard";
+import OfficerRoute from "./components/OfficerRoute";
 
 
 function App() {
@@ -41,7 +42,14 @@ function App() {
 
         <Route path="/rto-submit" element={<RTOSubmission />} />
 
-        <Route path="/rto-dashboard" element={<RTOOfficerDashboard />} />
+        <Route
+          path="/rto-dashboard"
+          element={
+            <OfficerRoute>
+              <RTOOfficerDashboard />
+            </OfficerRoute>
+          }
+        />
 
       </Routes>
     </HashRouter>

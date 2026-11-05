@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import Sidebar from "../components/Sidebar";
 
 // Read saved entries from the browser
 function getSavedEntries() {
@@ -262,57 +263,7 @@ function Dashboard() {
     <div className="dashboard-page">
 
       {/* Sidebar */}
-      <aside className="sidebar">
-
-        <div className="sidebar-logo">
-          <div className="logo-icon">↗</div>
-          <span>
-            Carbon<span>Wise</span>
-          </span>
-        </div>
-
-        <nav className="sidebar-nav">
-
-          <Link to="/dashboard" className="sidebar-link active">
-            <span>▣</span>
-            Dashboard
-          </Link>
-
-          <Link to="/add-entry" className="sidebar-link">
-            <span>＋</span>
-            Add Carbon Entry
-          </Link>
-
-          <Link to="/vehicles" className="sidebar-link">
-            <span>🚗</span>
-            My Vehicles
-          </Link>
-
-          <Link to="/history" className="sidebar-link">
-            <span>◷</span>
-            Carbon History
-          </Link>
-
-          <Link to="/analytics" className="sidebar-link">
-            <span>▥</span>
-            Analytics
-          </Link>
-
-          <Link to="/profile" className="sidebar-link">
-            <span>◉</span>
-            Profile
-          </Link>
-
-        </nav>
-
-        <div className="sidebar-bottom">
-          <Link to="/" className="sidebar-link logout-link">
-            <span>↪</span>
-            Logout
-          </Link>
-        </div>
-
-      </aside>
+      <Sidebar />
 
 
       {/* Main Content */}
