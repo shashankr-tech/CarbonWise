@@ -1,8 +1,8 @@
+
 const express = require("express");
 const mongoose = require("mongoose");
 
 const Vehicle = require("../models/Vehicle");
-const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -13,18 +13,14 @@ router.use(authMiddleware);
 const GRID_ELECTRICITY_FACTOR = 0.675;
 const FUELS = ["Petrol", "Diesel", "Electricity"];
 
-// Vehicles every new user starts with (same as the old demo list)
-const DEFAULT_VEHICLES = [
-    { name: "Honda City", fuel: "Petrol", efficiencyValue: 17.8 },
-    { name: "TVS Apache", fuel: "Petrol", efficiencyValue: 40 },
-    { name: "Tata Nexon EV", fuel: "Electricity", efficiencyValue: 0.15 }
-];
-
-// Work out the derived fields. The server is the source of truth for kgPerKm.
+// Calculate vehicle emission details
+// The backend is the source of truth for kgPerKm.
 function buildVehicleFields(name, fuel, efficiencyValue) {
-    const efficiencyUnit = fuel === "Electricity" ? "kWh/km" : "km/L";
+    const efficiencyUnit =
+        fuel === "Electricity" ? "kWh/km" : "km/L";
 
     let kgPerKm;
+
     if (fuel === "Petrol") {
         kgPerKm = 2.30 / efficiencyValue;
     } else if (fuel === "Diesel") {
@@ -43,57 +39,64 @@ function buildVehicleFields(name, fuel, efficiencyValue) {
     };
 }
 
-// Validate request body. Returns { error } or { fields }.
-function validateBody(body) {
-    const name = typeof body.name === "string" ? body.name.trim() : "";
+// Validate vehicle information
+function validateBody(body = {}) {
+    const name =
+        typeof body.name === "string"
+            ? body.name.trim()
+            : "";
+
     const fuel = body.fuel;
     const efficiencyValue = Number(body.efficiencyValue);
 
     if (!name) {
-        return { error: "Please enter a vehicle name." };
+        return {
+            error: "Please enter a vehicle name."
+        };
     }
 
     if (!FUELS.includes(fuel)) {
-        return { error: "Please choose a valid fuel type." };
+        return {
+            error: "Please choose a valid fuel type."
+        };
     }
 
-    if (!Number.isFinite(efficiencyValue) || efficiencyValue <= 0) {
-        return { error: "Please enter a valid efficiency value." };
+    if (
+        !Number.isFinite(efficiencyValue) ||
+        efficiencyValue <= 0
+    ) {
+        return {
+            error: "Please enter a valid efficiency value."
+        };
     }
 
-    return { fields: buildVehicleFields(name, fuel, efficiencyValue) };
+    return {
+        fields: buildVehicleFields(
+            name,
+            fuel,
+            efficiencyValue
+        )
+    };
 }
 
+// Format vehicle response
 function formatVehicle(vehicle) {
     const object = vehicle.toObject();
+
     object.id = vehicle._id.toString();
+
     delete object.__v;
+
     return object;
 }
 
-// GET ALL VEHICLES FOR THE LOGGED-IN USER
+// ========================================
+// GET ALL VEHICLES FOR LOGGED-IN USER
+// ========================================
+
 router.get("/", async (req, res) => {
     try {
-        // First time this user opens vehicles: add the default vehicles once.
-        // findOneAndUpdate is atomic, so this runs only once per user.
-        const firstTime = await User.findOneAndUpdate(
-            { _id: req.user.id, vehiclesSeeded: { $ne: true } },
-            { vehiclesSeeded: true }
-        );
-
-        if (firstTime) {
-            await Vehicle.insertMany(
-                DEFAULT_VEHICLES.map((vehicle) => ({
-                    user: req.user.id,
-                    ...buildVehicleFields(
-                        vehicle.name,
-                        vehicle.fuel,
-                        vehicle.efficiencyValue
-                    )
-                }))
-            );
-        }
-
+        // Retrieve only the logged-in user's vehicles
         const vehicles = await Vehicle.find({
             user: req.user.id
         }).sort({ createdAt: 1 });
@@ -114,15 +117,22 @@ router.get("/", async (req, res) => {
     }
 });
 
+// ========================================
 // ADD A VEHICLE
+// ========================================
+
 router.post("/", async (req, res) => {
     try {
         const { error, fields } = validateBody(req.body);
 
         if (error) {
-            return res.status(400).json({ success: false, message: error });
+            return res.status(400).json({
+                success: false,
+                message: error
+            });
         }
 
+        // Associate the vehicle with the logged-in user
         const vehicle = await Vehicle.create({
             user: req.user.id,
             ...fields
@@ -151,7 +161,10 @@ router.post("/", async (req, res) => {
     }
 });
 
+// ========================================
 // EDIT A VEHICLE
+// ========================================
+
 router.put("/:id", async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -164,14 +177,23 @@ router.put("/:id", async (req, res) => {
         const { error, fields } = validateBody(req.body);
 
         if (error) {
-            return res.status(400).json({ success: false, message: error });
+            return res.status(400).json({
+                success: false,
+                message: error
+            });
         }
 
         // Update only if the vehicle belongs to this user
         const vehicle = await Vehicle.findOneAndUpdate(
-            { _id: req.params.id, user: req.user.id },
+            {
+                _id: req.params.id,
+                user: req.user.id
+            },
             fields,
-            { new: true, runValidators: true }
+            {
+                new: true,
+                runValidators: true
+            }
         );
 
         if (!vehicle) {
@@ -204,7 +226,10 @@ router.put("/:id", async (req, res) => {
     }
 });
 
+// ========================================
 // DELETE A VEHICLE
+// ========================================
+
 router.delete("/:id", async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
