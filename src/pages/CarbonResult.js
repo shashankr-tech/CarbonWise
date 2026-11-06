@@ -19,39 +19,11 @@ function CarbonResult() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  // Save the entry in browser storage
+  // The entry was already saved to MongoDB when it was submitted.
+  // Dashboard, History and Analytics read it from there.
   const handleSave = () => {
-    try {
-      const storedEntries = localStorage.getItem("carbonWiseEntries");
-
-      let entries = storedEntries
-        ? JSON.parse(storedEntries)
-        : [];
-
-      if (!Array.isArray(entries)) {
-        throw new Error("Invalid saved entries");
-      }
-
-      // Avoid saving the same entry twice
-      const alreadyExists = entries.some(
-        (item) => item.id === entry.id
-      );
-
-      if (!alreadyExists) {
-        entries.push(entry);
-
-        localStorage.setItem(
-          "carbonWiseEntries",
-          JSON.stringify(entries)
-        );
-      }
-
-      setSaved(true);
-      setError("");
-
-    } catch (saveError) {
-      setError("Unable to save entry. Please try again.");
-    }
+    setSaved(true);
+    setError("");
   };
 
   // Handle missing result

@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { getTokenRole } from "../utils/auth";
+import { clearSession } from "../utils/api";
 
 function Sidebar() {
   const isOfficer = getTokenRole() === "officer";
@@ -63,7 +64,11 @@ function Sidebar() {
       </nav>
 
       <div className="sidebar-bottom">
-        <Link to="/" className="sidebar-link logout-link">
+        <Link
+          to="/"
+          className="sidebar-link logout-link"
+          onClick={clearSession}
+        >
           <span>↪</span>
           Logout
         </Link>

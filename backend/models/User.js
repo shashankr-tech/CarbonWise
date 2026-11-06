@@ -24,7 +24,17 @@ role: {
     type: String,
     enum: ["user", "officer"],
     default: "user"
-}
+},
+
+        // Profile details (editable on the Profile page)
+        city: { type: String, trim: true, default: "" },
+
+        age: { type: Number, min: 1, max: 120, default: null },
+
+        country: { type: String, trim: true, default: "" },
+
+        // Becomes true after the default vehicles are added once
+        vehiclesSeeded: { type: Boolean, default: false }
     },
     {
         timestamps: true

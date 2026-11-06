@@ -1,71 +1,77 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { apiRequest } from "../utils/api";
 
 // Default profile information
 const defaultProfile = {
-  fullName: "Shashank",
+  fullName: "",
   email: "",
   city: "",
   age: "",
   country: ""
 };
 
-// Load saved profile
-function getSavedProfile() {
-  try {
-    const saved = localStorage.getItem("carbonWiseProfile");
-
-    if (saved) {
-      return {
-        ...defaultProfile,
-        ...JSON.parse(saved)
-      };
-    }
-  } catch (error) {
-    console.error("Unable to load profile:", error);
-  }
-
-  return defaultProfile;
-}
-
-// Load saved data counts
-function getProfileStats() {
-  try {
-    const entries = JSON.parse(
-      localStorage.getItem("carbonWiseEntries") || "[]"
-    );
-
-    const vehicles = JSON.parse(
-      localStorage.getItem("carbonWiseVehicles") || "[]"
-    );
-
-    const totalEmissions = Array.isArray(entries)
-      ? entries.reduce(
-          (total, entry) => total + (Number(entry.emissions) || 0),
-          0
-        )
-      : 0;
-
-    return {
-      entries: Array.isArray(entries) ? entries.length : 0,
-      vehicles: Array.isArray(vehicles) ? vehicles.length : 0,
-      emissions: totalEmissions
-    };
-  } catch (error) {
-    console.error("Unable to load profile statistics:", error);
-
-    return {
-      entries: 0,
-      vehicles: 0,
-      emissions: 0
-    };
-  }
-}
-
 function Profile() {
-  const [profile, setProfile] = useState(getSavedProfile);
-  const [formData, setFormData] = useState(getSavedProfile);
-  const [stats] = useState(getProfileStats);
+  const [profile, setProfile] = useState(defaultProfile);
+  const [formData, setFormData] = useState(defaultProfile);
+  const [stats, setStats] = useState({
+    entries: 0,
+    vehicles: 0,
+    emissions: 0
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Load the profile, entry count, vehicle count and total emissions
+  // from MongoDB
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        const [profileData, entryData, vehicleData] = await Promise.all([
+          apiRequest("/auth/me"),
+          apiRequest("/entries"),
+          apiRequest("/vehicles")
+        ]);
+
+        if (cancelled) return;
+
+        const loadedProfile = {
+          ...defaultProfile,
+          ...profileData.profile
+        };
+
+        const entries = Array.isArray(entryData.entries)
+          ? entryData.entries
+          : [];
+
+        const vehicles = Array.isArray(vehicleData.vehicles)
+          ? vehicleData.vehicles
+          : [];
+
+        setProfile(loadedProfile);
+        setFormData(loadedProfile);
+        setStats({
+          entries: entries.length,
+          vehicles: vehicles.length,
+          emissions: entries.reduce(
+            (total, entry) => total + (Number(entry.emissions) || 0),
+            0
+          )
+        });
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message || "Unable to load your profile.");
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
@@ -85,7 +91,7 @@ function Profile() {
   };
 
   // Save profile information
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
 
     const updatedProfile = {
@@ -117,19 +123,27 @@ function Profile() {
       return;
     }
 
-    try {
-      localStorage.setItem(
-        "carbonWiseProfile",
-        JSON.stringify(updatedProfile)
-      );
+    setSaving(true);
 
-      setProfile(updatedProfile);
-      setFormData(updatedProfile);
+    try {
+      const data = await apiRequest("/auth/me", {
+        method: "PUT",
+        body: updatedProfile
+      });
+
+      const savedProfile = { ...defaultProfile, ...data.profile };
+
+      setProfile(savedProfile);
+      setFormData(savedProfile);
       setEditing(false);
       setMessage("Profile updated successfully!");
       setError("");
-    } catch (storageError) {
-      setError("Unable to save your profile. Please try again.");
+    } catch (saveError) {
+      setError(
+        saveError.message || "Unable to save your profile. Please try again."
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -335,7 +349,11 @@ function Profile() {
 
               <div className="profile-form-actions">
 
-                <button type="submit" className="profile-save-button">
+                <button
+                  type="submit"
+                  className="profile-save-button"
+                  disabled={saving}
+                >
                   Save Changes
                 </button>
 

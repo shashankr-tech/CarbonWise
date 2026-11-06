@@ -1,19 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
-// Load saved carbon entries
-function getSavedEntries() {
-  try {
-    const savedData = localStorage.getItem("carbonWiseEntries");
-    const parsedData = savedData ? JSON.parse(savedData) : [];
-
-    return Array.isArray(parsedData) ? parsedData : [];
-  } catch (error) {
-    console.error("Unable to load analytics data:", error);
-    return [];
-  }
-}
+import { apiRequest } from "../utils/api";
 
 // Format a date as YYYY-MM-DD
 function getDateString(date) {
@@ -68,20 +56,31 @@ const categories = [
 ];
 
 function Analytics() {
-  const [entries, setEntries] = useState(getSavedEntries);
+  const [entries, setEntries] = useState([]);
   const [selectedRange, setSelectedRange] = useState("30days");
 
   // Refresh data when returning to the page
   useEffect(() => {
-    const refreshEntries = () => {
-      setEntries(getSavedEntries());
+    let cancelled = false;
+
+    const refreshEntries = async () => {
+      try {
+        const data = await apiRequest("/entries");
+
+        if (!cancelled) {
+          setEntries(Array.isArray(data.entries) ? data.entries : []);
+        }
+      } catch (loadError) {
+        console.error("Unable to load carbon entries:", loadError);
+      }
     };
 
-    window.addEventListener("storage", refreshEntries);
+    refreshEntries();
+
     window.addEventListener("focus", refreshEntries);
 
     return () => {
-      window.removeEventListener("storage", refreshEntries);
+      cancelled = true;
       window.removeEventListener("focus", refreshEntries);
     };
   }, []);

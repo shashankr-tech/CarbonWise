@@ -1,27 +1,6 @@
 // India electricity grid factor for FY 2025-26
 export const GRID_ELECTRICITY_FACTOR = 0.675;
 
-// Vehicle information used by the demonstration
-export const VEHICLES = {
-  "Honda City": {
-    fuel: "Petrol",
-    efficiency: "17.8 km/L",
-    kgPerKm: 2.30 / 17.8
-  },
-
-  "TVS Apache": {
-    fuel: "Petrol",
-    efficiency: "40 km/L",
-    kgPerKm: 2.30 / 40
-  },
-
-  "Tata Nexon EV": {
-    fuel: "Electricity",
-    efficiency: "0.15 kWh/km",
-    kgPerKm: 0.15 * GRID_ELECTRICITY_FACTOR
-  }
-};
-
 // Average transport factors
 // Public transport factors are per passenger-kilometre.
 export const TRANSPORT_FACTORS = {

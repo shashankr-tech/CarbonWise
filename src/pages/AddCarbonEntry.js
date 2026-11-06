@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { apiRequest } from "../utils/api";
+
 import {
-  VEHICLES,
   TRANSPORT_FACTORS,
   GRID_ELECTRICITY_FACTOR,
   HOUSEHOLD_FUEL_FACTORS,
@@ -46,6 +47,38 @@ function AddCarbonEntry() {
   // Validation error
   const [error, setError] = useState("");
 
+  // The user's registered vehicles (from MongoDB)
+  const [vehicles, setVehicles] = useState([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVehicles = async () => {
+      try {
+        const data = await apiRequest("/vehicles");
+
+        if (!cancelled) {
+          setVehicles(Array.isArray(data.vehicles) ? data.vehicles : []);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message || "Unable to load your vehicles.");
+        }
+      } finally {
+        if (!cancelled) {
+          setVehiclesLoading(false);
+        }
+      }
+    };
+
+    loadVehicles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -68,7 +101,10 @@ function AddCarbonEntry() {
       }
 
       if (transportMode === "Personal Vehicle") {
-        const vehicleData = VEHICLES[vehicle];
+        // Use the saved kgPerKm of the selected registered vehicle
+        const vehicleData = vehicles.find(
+          (item) => item.name === vehicle
+        );
 
         if (!vehicleData) {
           setError("Please select your vehicle.");
@@ -196,38 +232,12 @@ function AddCarbonEntry() {
       date: entryDate
     };
 
-    
-// Save the carbon entry to the backend
-try {
-    // Get the JWT token saved during login
-    const token = localStorage.getItem("carbonWiseToken");
-
-    // Check whether the user is logged in
-    if (!token) {
-        navigate("/login");
-        return;
-    }
-
-    const response = await fetch(
-        "http://localhost:5000/api/entries",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify(entry),
-        }
-    );
-
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to save carbon entry."
-        );
-      }
+    // Save the carbon entry to the backend (MongoDB)
+    try {
+      const data = await apiRequest("/entries", {
+        method: "POST",
+        body: entry
+      });
 
       // Pass the saved entry to the Carbon Result page
       sessionStorage.setItem(
@@ -244,7 +254,9 @@ try {
     }
   };
 
-  const selectedVehicle = VEHICLES[vehicle];
+  const selectedVehicle = vehicles.find(
+    (item) => item.name === vehicle
+  );
 
   const selectedFuel = HOUSEHOLD_FUEL_FACTORS[fuelType];
 
@@ -322,14 +334,25 @@ try {
                       onChange={(event) => setVehicle(event.target.value)}
                       required
                     >
-                      <option value="">Select a vehicle</option>
+                      <option value="">
+                        {vehiclesLoading
+                          ? "Loading vehicles..."
+                          : "Select a vehicle"}
+                      </option>
 
-                      {Object.keys(VEHICLES).map((name) => (
-                        <option key={name} value={name}>
-                          {name}
+                      {vehicles.map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name}
                         </option>
                       ))}
                     </select>
+
+                    {!vehiclesLoading && vehicles.length === 0 && (
+                      <p className="add-entry-hint">
+                        You have no registered vehicles.{" "}
+                        <Link to="/vehicles">Add one in My Vehicles</Link>
+                      </p>
+                    )}
 
                     {selectedVehicle && (
                       <div className="vehicle-info">
