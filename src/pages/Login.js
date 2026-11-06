@@ -1,6 +1,7 @@
 
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { saveToken, clearLegacyData } from "../utils/api";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -48,34 +49,12 @@ if (!data.token) {
   throw new Error("Authentication token was not received.");
 }
 
-// Save JWT token in localStorage
-localStorage.setItem("carbonWiseToken", data.token);
+// Save the JWT token. This is the only thing kept in the browser.
+// Profile, vehicles and carbon entries are stored in MongoDB.
+saveToken(data.token);
 
-      // Get the existing profile information
-      // This preserves details such as city, age and country
-      let savedProfile = {};
-
-      try {
-        savedProfile = JSON.parse(
-          localStorage.getItem("carbonWiseProfile") || "{}"
-        );
-      } catch (error) {
-        savedProfile = {};
-      }
-
-      // Update profile with the currently logged-in user
-      const updatedProfile = {
-        ...savedProfile,
-        fullName: data.user.name,
-        email: data.user.email,
-        userId: data.user.id
-      };
-
-      // Save updated profile information
-      localStorage.setItem(
-        "carbonWiseProfile",
-        JSON.stringify(updatedProfile)
-      );
+// Remove old browser copies of data that now lives in MongoDB
+clearLegacyData();
 
       setMessage(data.message || "Login successful!");
 

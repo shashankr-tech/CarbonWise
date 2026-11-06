@@ -1,55 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 
-import {
-  VEHICLES,
-  GRID_ELECTRICITY_FACTOR
-} from "../utils/emissionFactors";
-
-// Create the initial vehicle list using existing project vehicles
-function getDefaultVehicles() {
-  return Object.entries(VEHICLES).map(([name, data], index) => {
-    const efficiencyUnit =
-      data.fuel === "Electricity" ? "kWh/km" : "km/L";
-
-    return {
-      id: `default-${index + 1}`,
-      name,
-      fuel: data.fuel,
-      efficiencyValue: Number.parseFloat(data.efficiency),
-      efficiencyUnit,
-      efficiency: data.efficiency,
-      kgPerKm: data.kgPerKm
-    };
-  });
-}
-
-// Load vehicles from localStorage
-function loadVehicles() {
-  try {
-    const saved = localStorage.getItem("carbonWiseVehicles");
-
-    if (saved !== null) {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    }
-
-    const defaults = getDefaultVehicles();
-
-    localStorage.setItem(
-      "carbonWiseVehicles",
-      JSON.stringify(defaults)
-    );
-
-    return defaults;
-  } catch (error) {
-    console.error("Unable to load vehicles:", error);
-    return getDefaultVehicles();
-  }
-}
+import { apiRequest } from "../utils/api";
 
 function MyVehicles() {
-  const [vehicles, setVehicles] = useState(loadVehicles);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -58,35 +14,36 @@ function MyVehicles() {
   const [fuel, setFuel] = useState("Petrol");
   const [efficiency, setEfficiency] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // Save the updated vehicle list
-  const saveVehicles = (updatedVehicles) => {
-    try {
-      localStorage.setItem(
-        "carbonWiseVehicles",
-        JSON.stringify(updatedVehicles)
-      );
+  // Load this user's vehicles from MongoDB
+  useEffect(() => {
+    let cancelled = false;
 
-      setVehicles(updatedVehicles);
-      return true;
-    } catch (storageError) {
-      setError("Unable to save vehicles. Please try again.");
-      return false;
-    }
-  };
+    const loadVehicles = async () => {
+      try {
+        const data = await apiRequest("/vehicles");
 
-  // Calculate estimated emissions per kilometre
-  const calculateFactor = (fuelType, efficiencyValue) => {
-    if (fuelType === "Petrol") {
-      return 2.30 / efficiencyValue;
-    }
+        if (!cancelled) {
+          setVehicles(Array.isArray(data.vehicles) ? data.vehicles : []);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message || "Unable to load vehicles.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
 
-    if (fuelType === "Diesel") {
-      return 2.685 / efficiencyValue;
-    }
+    loadVehicles();
 
-    return efficiencyValue * GRID_ELECTRICITY_FACTOR;
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Open the form for adding a vehicle
   const handleAdd = () => {
@@ -110,8 +67,8 @@ function MyVehicles() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Add or update a vehicle
-  const handleSubmit = (event) => {
+  // Add or update a vehicle in MongoDB
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
@@ -143,53 +100,67 @@ function MyVehicles() {
       return;
     }
 
-    const efficiencyUnit =
-      fuel === "Electricity" ? "kWh/km" : "km/L";
-
-    const updatedVehicle = {
-      id: editingId || `vehicle-${Date.now()}`,
+    const payload = {
       name: trimmedName,
       fuel,
-      efficiencyValue,
-      efficiencyUnit,
-      efficiency: `${efficiencyValue} ${efficiencyUnit}`,
-      kgPerKm: calculateFactor(fuel, efficiencyValue)
+      efficiencyValue
     };
 
-    let updatedVehicles;
+    setSaving(true);
 
-    if (editingId) {
-      updatedVehicles = vehicles.map((vehicle) =>
-        String(vehicle.id) === String(editingId)
-          ? updatedVehicle
-          : vehicle
-      );
-    } else {
-      updatedVehicles = [...vehicles, updatedVehicle];
-    }
+    try {
+      if (editingId) {
+        const data = await apiRequest(`/vehicles/${editingId}`, {
+          method: "PUT",
+          body: payload
+        });
 
-    if (saveVehicles(updatedVehicles)) {
+        setVehicles((current) =>
+          current.map((vehicle) =>
+            String(vehicle.id) === String(editingId)
+              ? data.vehicle
+              : vehicle
+          )
+        );
+      } else {
+        const data = await apiRequest("/vehicles", {
+          method: "POST",
+          body: payload
+        });
+
+        setVehicles((current) => [...current, data.vehicle]);
+      }
+
       setShowForm(false);
       setEditingId(null);
       setName("");
       setFuel("Petrol");
       setEfficiency("");
+    } catch (saveError) {
+      setError(saveError.message || "Unable to save vehicle.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Delete a vehicle
-  const handleDelete = (id) => {
+  // Delete a vehicle from MongoDB
+  const handleDelete = async (id) => {
     const confirmed = window.confirm(
       "Delete this vehicle? Previously saved carbon entries will remain unchanged."
     );
 
     if (!confirmed) return;
 
-    const updatedVehicles = vehicles.filter(
-      (vehicle) => String(vehicle.id) !== String(id)
-    );
+    try {
+      await apiRequest(`/vehicles/${id}`, { method: "DELETE" });
 
-    saveVehicles(updatedVehicles);
+      setVehicles((current) =>
+        current.filter((vehicle) => String(vehicle.id) !== String(id))
+      );
+      setError("");
+    } catch (deleteError) {
+      setError(deleteError.message || "Unable to delete vehicle.");
+    }
   };
 
   const electricCount = vehicles.filter(
@@ -344,7 +315,11 @@ function MyVehicles() {
                 </p>
               )}
 
-              <button type="submit" className="vehicle-save-button">
+              <button
+                type="submit"
+                className="vehicle-save-button"
+                disabled={saving}
+              >
                 {editingId ? "Update Vehicle" : "Save Vehicle"}
               </button>
 
@@ -365,7 +340,19 @@ function MyVehicles() {
             </div>
           </div>
 
-          {vehicles.length === 0 ? (
+          {!showForm && error && (
+            <p className="vehicle-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {loading ? (
+
+            <div className="dashboard-card vehicle-empty">
+              <p>Loading your vehicles...</p>
+            </div>
+
+          ) : vehicles.length === 0 ? (
 
             <div className="dashboard-card vehicle-empty">
               <div>🚗</div>

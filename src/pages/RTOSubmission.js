@@ -2,20 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { getTokenRole } from "../utils/auth";
-
-// Load vehicles from My Vehicles
-function getVehicles() {
-  try {
-    const saved = localStorage.getItem("carbonWiseVehicles");
-    const parsed = saved ? JSON.parse(saved) : [];
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error("Unable to load vehicles:", error);
-    return [];
-  }
-}
-
+import { apiRequest } from "../utils/api";
 
 // Format submission date
 function formatDate(dateValue) {
@@ -33,28 +20,16 @@ function formatDate(dateValue) {
 }
 
 function RTOSubmission() {
-  const vehicles = getVehicles();
+  const [vehicles, setVehicles] = useState([]);
   const isOfficer = getTokenRole() === "officer";
 
   const [reports, setReports] = useState([]);
 
-  const [ownerName, setOwnerName] = useState(() => {
-    try {
-      const profile = JSON.parse(
-        localStorage.getItem("carbonWiseProfile") || "{}"
-      );
-
-      return profile.fullName || "";
-    } catch {
-      return "";
-    }
-  });
+  const [ownerName, setOwnerName] = useState("");
 
   const [email, setEmail] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
-  const [vehicleId, setVehicleId] = useState(
-    vehicles.length > 0 ? String(vehicles[0].id) : ""
-  );
+  const [vehicleId, setVehicleId] = useState("");
   const [city, setCity] = useState("");
   const [odometer, setOdometer] = useState("");
   const [notes, setNotes] = useState("");
@@ -62,38 +37,44 @@ function RTOSubmission() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Fetch this user's previous RTO submissions from MongoDB
+  // Load vehicles, profile name and previous RTO submissions from MongoDB
   useEffect(() => {
-    const fetchMyReports = async () => {
+    let cancelled = false;
+
+    const loadData = async () => {
       try {
-        const token = localStorage.getItem("carbonWiseToken");
+        const [vehicleData, reportData, profileData] = await Promise.all([
+          apiRequest("/vehicles"),
+          apiRequest("/rto/my"),
+          apiRequest("/auth/me")
+        ]);
 
-        if (!token) {
-          throw new Error("Please log in again to view your submissions.");
+        if (cancelled) return;
+
+        const loadedVehicles = Array.isArray(vehicleData.vehicles)
+          ? vehicleData.vehicles
+          : [];
+
+        setVehicles(loadedVehicles);
+
+        if (loadedVehicles.length > 0) {
+          setVehicleId(String(loadedVehicles[0].id));
         }
 
-        const response = await fetch(
-          "http://localhost:5000/api/rto/my",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to load your submissions.");
-        }
-
-        setReports(Array.isArray(data.reports) ? data.reports : []);
+        setReports(Array.isArray(reportData.reports) ? reportData.reports : []);
+        setOwnerName((current) => current || profileData.profile.fullName || "");
       } catch (fetchError) {
-        setError(fetchError.message || "Unable to load your submissions.");
+        if (!cancelled) {
+          setError(fetchError.message || "Unable to load your data.");
+        }
       }
     };
 
-    fetchMyReports();
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Find selected vehicle
@@ -158,31 +139,11 @@ function RTOSubmission() {
     };
 
     try {
-      // Get the JWT token saved during login
-      const token = localStorage.getItem("carbonWiseToken");
-
-      if (!token) {
-        throw new Error("Please log in again before submitting vehicle information.");
-      }
-
       // Send the report to the backend
-      const response = await fetch(
-        "http://localhost:5000/api/rto",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(report)
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to submit vehicle information.");
-      }
+      const data = await apiRequest("/rto", {
+        method: "POST",
+        body: report
+      });
 
       // Add the MongoDB report to the displayed submissions
       setReports((currentReports) => [data.report, ...currentReports]);

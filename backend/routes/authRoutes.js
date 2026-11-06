@@ -5,6 +5,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const authMiddleware = require("../middleware/authMiddleware");
 
 
 // ========================================
@@ -167,6 +168,126 @@ router.post("/login", async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server error during login."
+        });
+    }
+});
+
+
+// ========================================
+// PROFILE: VIEW AND UPDATE
+// ========================================
+
+function formatProfile(user) {
+    return {
+        fullName: user.name,
+        email: user.email,
+        city: user.city || "",
+        age: user.age === null || user.age === undefined ? "" : user.age,
+        country: user.country || ""
+    };
+}
+
+router.get("/me", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Account not found. Please log in again."
+            });
+        }
+
+        return res.json({ success: true, profile: formatProfile(user) });
+
+    } catch (error) {
+        console.error("Profile fetch error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error while loading your profile."
+        });
+    }
+});
+
+router.put("/me", authMiddleware, async (req, res) => {
+    try {
+        const { fullName, email, city, age, country } = req.body;
+
+        const name = typeof fullName === "string" ? fullName.trim() : "";
+        const normalizedEmail =
+            typeof email === "string" ? email.trim().toLowerCase() : "";
+
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter your full name."
+            });
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid email address."
+            });
+        }
+
+        let ageValue = null;
+
+        if (age !== "" && age !== null && age !== undefined) {
+            ageValue = Number(age);
+
+            if (!Number.isFinite(ageValue) || ageValue < 1 || ageValue > 120) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please enter a valid age."
+                });
+            }
+        }
+
+        // Email must not belong to another account
+        const emailOwner = await User.findOne({ email: normalizedEmail });
+
+        if (emailOwner && emailOwner._id.toString() !== req.user.id) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is already registered."
+            });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            {
+                name,
+                email: normalizedEmail,
+                city: typeof city === "string" ? city.trim() : "",
+                age: ageValue,
+                country: typeof country === "string" ? country.trim() : ""
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Account not found. Please log in again."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Profile updated successfully!",
+            profile: formatProfile(user)
+        });
+
+    } catch (error) {
+        console.error("Profile update error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error while updating your profile."
         });
     }
 });

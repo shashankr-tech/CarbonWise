@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const authRoutes = require("./routes/authRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const rtoRoutes = require("./routes/rtoRoutes");
+const vehicleRoutes = require("./routes/vehicleRoutes");
 
 // Create Express application
 const app = express();
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api/rto", rtoRoutes);
+app.use("/api/vehicles", vehicleRoutes);
 
 // Test route
 app.get("/", (req, res) => {
